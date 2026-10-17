@@ -238,6 +238,7 @@
           const stepDuration = 0.18;
           setInterval(() => {
             if (!this.ctx || this.ctx.state !== "running") return;
+            if (this.musicMuted) return;
             const now = this.ctx.currentTime;
             const step = this.musicStep++;
 
@@ -433,15 +434,136 @@
           osc.start(now);
           osc.stop(now + 0.25);
         }
+
+        playHurt() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(190, now);
+          osc.frequency.exponentialRampToValueAtTime(65, now + 0.14);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.14);
+        }
+
+        playHeartCrack() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.setValueAtTime(2400, now);
+          filter.Q.setValueAtTime(3.0, now);
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          noise.start(now);
+          noise.stop(now + 0.08);
+
+          const osc = this.ctx.createOscillator();
+          const oGain = this.ctx.createGain();
+          osc.type = "square";
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+          oGain.gain.setValueAtTime(0.22, now);
+          oGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          osc.connect(oGain);
+          oGain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        }
+
+        playHeartShatter() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "highpass";
+          filter.frequency.setValueAtTime(1100, now);
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.38, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          noise.start(now);
+          noise.stop(now + 0.32);
+
+          const notes = [620, 480, 340, 210];
+          notes.forEach((f, idx) => {
+            const t = now + idx * 0.04;
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(f, t);
+            osc.frequency.exponentialRampToValueAtTime(f * 0.5, t + 0.1);
+            g.gain.setValueAtTime(0.18, t);
+            g.gain.exponentialRampToValueAtTime(0.008, t + 0.1);
+            osc.connect(g);
+            g.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.1);
+          });
+        }
+
+        playCheckpoint() {
+          if (!this.ctx) return;
+          const notes = [329.63, 440, 554.37, 659.25];
+          notes.forEach((freq, idx) => {
+            const now = this.ctx.currentTime + idx * 0.07;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.16, now);
+            gain.gain.exponentialRampToValueAtTime(0.005, now + 0.28);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.28);
+          });
+        }
+
+        playKeyPickup() {
+          if (!this.ctx) return;
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, idx) => {
+            const now = this.ctx.currentTime + idx * 0.055;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.008, now + 0.16);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.16);
+          });
+        }
       }
 
       // ==========================================
-      // CAMERA (Multi-Axis Screen Shake)
+      // CAMERA (Smooth Tracking + Multi-Axis Screen Shake)
       // ==========================================
       class Camera {
         constructor() {
           this.x = 0;
           this.y = 0;
+          this.scrollX = 0;
+          this.scrollY = 0;
+          this.shakeX = 0;
+          this.shakeY = 0;
           this.shakeMag = 0;
           this.shakeTimer = 0;
         }
@@ -451,18 +573,39 @@
           this.shakeTimer = Math.max(this.shakeTimer, frames);
         }
 
-        update() {
+        snapTo(target, mapWidth, mapHeight) {
+          const maxX = Math.max(0, mapWidth - WIDTH);
+          const maxY = Math.max(0, mapHeight - HEIGHT);
+          this.scrollX = Math.max(0, Math.min(maxX, target.x + target.w / 2 - WIDTH / 2));
+          this.scrollY = Math.max(0, Math.min(maxY, target.y + target.h / 2 - HEIGHT / 2));
+          this.x = Math.round(this.scrollX);
+          this.y = Math.round(this.scrollY);
+        }
+
+        update(target, mapWidth = WIDTH, mapHeight = HEIGHT) {
+          if (target) {
+            const maxX = Math.max(0, mapWidth - WIDTH);
+            const maxY = Math.max(0, mapHeight - HEIGHT);
+            const desiredX = Math.max(0, Math.min(maxX, target.x + target.w / 2 - WIDTH / 2));
+            const desiredY = Math.max(0, Math.min(maxY, target.y + target.h / 2 - HEIGHT / 2));
+            this.scrollX += (desiredX - this.scrollX) * 0.15;
+            this.scrollY += (desiredY - this.scrollY) * 0.15;
+          }
+
           if (this.shakeTimer > 0) {
             this.shakeTimer--;
             const decay = this.shakeTimer / 10;
             const currentMag = this.shakeMag * Math.min(1, decay);
-            this.x = Math.round((Math.random() * 2 - 1) * currentMag);
-            this.y = Math.round((Math.random() * 2 - 1) * currentMag);
+            this.shakeX = Math.round((Math.random() * 2 - 1) * currentMag);
+            this.shakeY = Math.round((Math.random() * 2 - 1) * currentMag);
           } else {
-            this.x = 0;
-            this.y = 0;
+            this.shakeX = 0;
+            this.shakeY = 0;
             this.shakeMag = 0;
           }
+
+          this.x = Math.round(this.scrollX) + this.shakeX;
+          this.y = Math.round(this.scrollY) + this.shakeY;
         }
       }
 
@@ -530,10 +673,9 @@
             this.ghosts[i].life--;
             if (this.ghosts[i].life <= 0) this.ghosts.splice(i, 1);
           }
-        }
-
-        draw(ctx) {
+        draw(ctx, camX = 0, camY = 0) {
           for (const g of this.ghosts) {
+            if (g.x + g.w < camX - 16 || g.x > camX + WIDTH + 16 || g.y + g.h < camY - 16 || g.y > camY + HEIGHT + 16) continue;
             ctx.globalAlpha = (g.life / g.maxLife) * 0.45;
             ctx.fillStyle = g.color;
             ctx.fillRect(Math.round(g.x), Math.round(g.y), g.w, g.h);
@@ -541,6 +683,7 @@
           ctx.globalAlpha = 1;
 
           for (const p of this.particles) {
+            if (p.x < camX - 16 || p.x > camX + WIDTH + 16 || p.y < camY - 16 || p.y > camY + HEIGHT + 16) continue;
             const size = p.life < 4 ? Math.max(1, p.size - 1) : p.size;
             ctx.fillStyle = p.color;
             ctx.fillRect(Math.round(p.x - size / 2), Math.round(p.y - size / 2), size, size);
@@ -549,69 +692,7 @@
       }
 
       // ==========================================
-      // PHYSICS BODY BASE
-      // ==========================================
-      class PhysicsBody {
-        constructor(x, y, w, h) {
-          this.x = x;
-          this.y = y;
-          this.w = w;
-          this.h = h;
-          this.vx = 0;
-          this.vy = 0;
-          this.remX = 0;
-          this.remY = 0;
-          this.onGround = false;
-        }
-
-        intersects(other) {
-          return (
-            this.x < other.x + other.w &&
-            this.x + this.w > other.x &&
-            this.y < other.y + other.h &&
-            this.y + this.h > other.y
-          );
-        }
-
-        moveX(amount, level, onCollide) {
-          this.remX += amount;
-          let move = Math.round(this.remX);
-          if (move !== 0) {
-            this.remX -= move;
-            const sign = Math.sign(move);
-            while (move !== 0) {
-              if (!level.collideSolid(this.x + sign, this.y, this.w, this.h)) {
-                this.x += sign;
-                move -= sign;
-              } else {
-                if (onCollide) onCollide();
-                break;
-              }
-            }
-          }
-        }
-
-        moveY(amount, level, onCollide) {
-          this.remY += amount;
-          let move = Math.round(this.remY);
-          if (move !== 0) {
-            this.remY -= move;
-            const sign = Math.sign(move);
-            while (move !== 0) {
-              if (!level.collideSolid(this.x, this.y + sign, this.w, this.h)) {
-                this.y += sign;
-                move -= sign;
-              } else {
-                if (onCollide) onCollide();
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      // ==========================================
-      // PLAYER (4-Directional Slash, Pogo, Dash & Jump)
+      // PLAYER (4-Directional Slash, Pogo, Horizontal Dash & 3 Hearts)
       // ==========================================
       class Player extends PhysicsBody {
         constructor(x, y, game) {
@@ -619,6 +700,10 @@
           this.game = game;
           this.spawnX = x;
           this.spawnY = y;
+
+          this.maxHp = 3;
+          this.hp = 3;
+          this.keysCollected = 0;
 
           this.facing = 1;
           this.hasSword = false; // Locked in Stage 1; unlocked at Stage 2 Celestial Shrine
@@ -665,12 +750,27 @@
           this.invulnTimer = 20;
         }
 
+        takeDamage(amount = 1) {
+          if (this.invulnTimer > 0 || this.game.deathSequence.active) return;
+          this.hp = Math.max(0, this.hp - amount);
+          if (this.hp <= 0) {
+            this.die();
+          } else {
+            this.invulnTimer = 30;
+            this.dashTimer = 0;
+            this.vy = -2.2;
+            this.vx = -this.facing * 1.6;
+            this.game.audio.playHurt();
+            this.game.camera.shake(4, 8);
+            this.game.hitstop = 3;
+            this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.playerHair, PALETTE.white, 12);
+          }
+        }
+
         die() {
-          this.game.audio.playDeath();
-          this.game.camera.shake(5, 10);
-          this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.playerHair, PALETTE.white, 20);
-          this.game.hitstop = 3;
-          this.resetToSpawn();
+          if (this.game.deathSequence.active) return;
+          this.hp = 0;
+          this.game.startDeathSequence(this.x + this.w / 2, this.y + this.h / 2);
         }
 
         // Computes the exact pixel rectangle used by BOTH the slash visual arc and the combat hitbox
@@ -757,26 +857,22 @@
             this.facing = moveInput;
           }
 
-          // Dash Initiation (C key)
+          // Dash Initiation (C key - Strictly Horizontal Only)
           if (input.pressed("KeyC") && this.canDash && this.dashCooldown <= 0) {
             this.canDash = false;
             this.pogoJumping = false;
             this.dashTimer = 9;
             this.dashCooldown = 14;
 
-            let dx = moveInput;
-            let dy = (input.isDown("ArrowDown") ? 1 : 0) - (input.isDown("ArrowUp") ? 1 : 0);
-            if (dx === 0 && dy === 0) dx = this.facing;
-
-            const len = Math.hypot(dx, dy);
-            this.dashDirX = dx / len;
-            this.dashDirY = dy / len;
+            if (moveInput !== 0) this.facing = moveInput;
+            this.dashDirX = this.facing;
+            this.dashDirY = 0;
 
             this.vx = this.dashDirX * 4.4;
-            this.vy = this.dashDirY * 4.4;
+            this.vy = 0;
 
-            this.scaleX = Math.abs(this.dashDirX) > Math.abs(this.dashDirY) ? 1.4 : 0.7;
-            this.scaleY = Math.abs(this.dashDirY) > Math.abs(this.dashDirX) ? 1.4 : 0.7;
+            this.scaleX = 1.4;
+            this.scaleY = 0.7;
 
             this.game.audio.playDash();
             this.game.camera.shake(2.5, 5);
@@ -788,13 +884,12 @@
           if (this.dashTimer > 0) {
             this.dashTimer--;
             this.vx = this.dashDirX * 4.2;
-            this.vy = this.dashDirY * 4.2;
+            this.vy = 0;
             if (this.dashTimer % 2 === 0) {
               this.game.particles.addGhost(this.x, this.y, this.w, this.h, PALETTE.playerNoDash);
             }
             if (this.dashTimer === 0) {
               this.vx *= 0.5;
-              this.vy *= 0.4;
             }
           } else {
             const maxRun = 1.85;
@@ -889,10 +984,16 @@
             this.attackTimer--;
           }
 
+          // Void drop instant death
+          if (this.y > level.rows * TILE + 8) {
+            this.die();
+            return;
+          }
+
           // Hazard / Spike collision (prevented if a downward pogo strike just bounced the player up)
           const pogoSavedFromSpikes = (this.pogoJumping || (this.swingDidRecoil && this.atkDirY === 1)) && this.vy < 0;
-          if ((!pogoSavedFromSpikes && level.collideSpike(this.x, this.y, this.w, this.h)) || this.y > HEIGHT + 8) {
-            this.die();
+          if (!pogoSavedFromSpikes && level.collideSpike(this.x, this.y, this.w, this.h)) {
+            this.takeDamage(1);
             return;
           }
 
@@ -914,11 +1015,67 @@
             }
           }
 
+          // Checkpoint Shrine interaction (Stage 9)
+          if (level.checkpoint) {
+            const cp = level.checkpoint;
+            if (
+              !cp.activated &&
+              this.x < cp.x + 14 &&
+              this.x + this.w > cp.x - 6 &&
+              this.y < cp.y + 16 &&
+              this.y + this.h > cp.y - 16
+            ) {
+              cp.activated = true;
+              this.spawnX = cp.x;
+              this.spawnY = cp.y - 1;
+              this.hp = this.maxHp;
+              this.game.checkpointStage = level.currentIndex;
+              this.game.checkpointX = cp.x;
+              this.game.checkpointY = cp.y - 1;
+              this.game.audio.playCheckpoint();
+              this.game.camera.shake(3, 8);
+              this.game.particles.spawnBurst(cp.x + 4, cp.y, PALETTE.playerNoDash, PALETTE.white, 26);
+            }
+          }
+
+          // Key pickups (Stage 9 Labyrinth)
+          for (const k of level.keys) {
+            if (!k.collected) {
+              if (
+                this.x < k.x + 10 &&
+                this.x + this.w > k.x - 2 &&
+                this.y < k.y + 10 &&
+                this.y + this.h > k.y - 2
+              ) {
+                k.collected = true;
+                this.keysCollected++;
+                this.game.audio.playKeyPickup();
+                this.game.hitstop = 3;
+                this.game.camera.shake(3, 6);
+                this.game.particles.spawnBurst(k.x + 4, k.y + 4, PALETTE.swordGlow, PALETTE.white, 20);
+              }
+            }
+          }
+
+          // Grand Gate touch unlock if player has all 3 keys
+          for (const enemy of level.enemies) {
+            if (!enemy.dead && enemy.isKeyGate && this.keysCollected >= 3) {
+              if (
+                this.x < enemy.x + enemy.w + 6 &&
+                this.x + this.w > enemy.x - 6 &&
+                this.y < enemy.y + enemy.h &&
+                this.y + this.h > enemy.y
+              ) {
+                enemy.unlockGrandGate(this.game);
+              }
+            }
+          }
+
           // Enemy contact hazard
           if (this.invulnTimer <= 0 && this.dashTimer <= 0) {
             for (const enemy of level.enemies) {
               if (!enemy.dead && !enemy.isDummy && enemy.knockbackTimer <= 0 && this.intersects(enemy)) {
-                this.die();
+                this.takeDamage(1);
                 return;
               }
             }
@@ -955,17 +1112,17 @@
 
           if ((hitEnemyThisFrame || pogoSpike) && !this.swingDidRecoil) {
             this.swingDidRecoil = true;
-            this.invulnTimer = 12;
+            this.invulnTimer = Math.max(this.invulnTimer, 12);
             this.dashTimer = 0;
 
             if (this.atkDirY === 1) {
-              // Crisp, high downward slash pogo launch + instant dash refresh
-              this.vy = -4.45;
+              // Average jump height pogo launch + instant dash refresh
+              this.vy = -3.55;
               this.pogoJumping = true;
               this.canDash = true;
               this.onGround = false;
-              this.scaleX = 0.72;
-              this.scaleY = 1.38;
+              this.scaleX = 0.75;
+              this.scaleY = 1.32;
             } else if (this.atkDirY === -1) {
               // Subtle downward knockback to player when hitting upward
               if (this.vy < 0) {
@@ -1074,17 +1231,18 @@
       }
 
       // ==========================================
-      // ENEMY & DESTRUCTIBLE BARRIER
+      // ENEMY, DESTRUCTIBLE BARRIER & GRAND KEY GATE
       // ==========================================
       class Enemy extends PhysicsBody {
         constructor(x, y, type = "patrol", customHeight = null) {
-          const isGate = type === "gate";
+          const isGate = type === "gate" || type === "keygate";
           const h = isGate ? (customHeight || 24) : 10;
           super(x, y, isGate ? 8 : 10, h);
           this.type = type;
           this.isDummy = isGate;
+          this.isKeyGate = type === "keygate";
           this.isFlyer = type === "flyer";
-          this.hp = isGate ? 3 : (type === "charger" ? 3 : 2);
+          this.hp = this.isKeyGate ? 999 : (isGate ? 3 : (type === "charger" ? 3 : 2));
           this.maxHp = this.hp;
           this.dir = -1;
           this.baseY = y;
@@ -1094,8 +1252,37 @@
           this.animTick = Math.floor(Math.random() * 30);
         }
 
+        unlockGrandGate(game) {
+          if (this.dead) return;
+          this.dead = true;
+          game.player.keysCollected = Math.max(0, game.player.keysCollected - 3);
+          game.hitstop = 8;
+          game.camera.shake(7, 16);
+          game.audio.playDefeatPop();
+          game.particles.spawnBurst(
+            this.x + this.w / 2,
+            this.y + this.h / 2,
+            PALETTE.swordGlow,
+            PALETTE.white,
+            42
+          );
+        }
+
         // Executes All 5 Combat Feedback Pillars on Hit
         takeHit(dirX, dirY, game) {
+          if (this.isKeyGate) {
+            if (game.player.keysCollected >= 3) {
+              this.unlockGrandGate(game);
+            } else {
+              this.flashTimer = 3;
+              this.knockbackTimer = 4;
+              game.audio.playHit();
+              game.camera.shake(2.5, 5);
+              game.particles.spawnHitSpray(this.x + this.w / 2, this.y + this.h / 2, dirX || 1, dirY, 8);
+            }
+            return;
+          }
+
           this.hp--;
 
           // 1. Flash pure white (#FFFFFF) for 4 frames
@@ -1163,7 +1350,7 @@
               this.vy *= 0.85;
             } else {
               const wallAhead = level.collideSolid(this.x + this.dir * 2, this.y, this.w, this.h);
-              if (wallAhead || this.x < 16 || this.x > WIDTH - 26) {
+              if (wallAhead || this.x < 16 || this.x > level.cols * TILE - 26) {
                 this.dir *= -1;
               }
               this.vx = this.dir * 0.65;
@@ -1214,7 +1401,7 @@
             this.vy = 0;
           });
 
-          if (level.collideSpike(this.x, this.y, this.w, this.h) || this.y > HEIGHT + 8) {
+          if (level.collideSpike(this.x, this.y, this.w, this.h) || this.y > level.rows * TILE + 8) {
             this.takeHit(this.dir, 0, player.game);
           }
         }
@@ -1235,16 +1422,27 @@
 
           if (this.isDummy) {
             // Full floor-to-ceiling runic gate with evenly spaced glowing seals
-            ctx.fillStyle = "#303952";
+            ctx.fillStyle = this.isKeyGate ? "#2c224e" : "#303952";
             ctx.fillRect(rx, ry, this.w, this.h);
-            ctx.fillStyle = PALETTE.tileEdge;
+            ctx.fillStyle = this.isKeyGate ? PALETTE.swordGlow : PALETTE.tileEdge;
             ctx.fillRect(rx, ry, 1, this.h);
             ctx.fillRect(rx + this.w - 1, ry, 1, this.h);
 
-            ctx.fillStyle = PALETTE.swordGlow;
-            const spacing = Math.max(6, Math.floor((this.h - 6) / this.maxHp));
-            for (let i = 0; i < this.hp; i++) {
-              ctx.fillRect(rx + 2, ry + 4 + i * spacing, 4, 4);
+            if (this.isKeyGate) {
+              // 3 Keyhole slots on the Grand Gate
+              const slotSpacing = Math.max(7, Math.floor((this.h - 6) / 3));
+              for (let i = 0; i < 3; i++) {
+                ctx.fillStyle = "#090a14";
+                ctx.fillRect(rx + 2, ry + 4 + i * slotSpacing, 4, 5);
+                ctx.fillStyle = PALETTE.swordGlow;
+                ctx.fillRect(rx + 3, ry + 5 + i * slotSpacing, 2, 2);
+              }
+            } else {
+              ctx.fillStyle = PALETTE.swordGlow;
+              const spacing = Math.max(6, Math.floor((this.h - 6) / this.maxHp));
+              for (let i = 0; i < this.hp; i++) {
+                ctx.fillRect(rx + 2, ry + 4 + i * spacing, 4, 4);
+              }
             }
             return;
           }
@@ -1280,16 +1478,161 @@
       }
 
       // ==========================================
-      // LEVEL MANAGER & MAPS (8-Stage Campaign @ 40x23 Tiles)
+      // LEVEL MANAGER & MAPS (Stages 1-8 + Stage 9 Grand Labyrinth)
       // ==========================================
+      function buildStage9Labyrinth() {
+        const cols = 120;
+        const rows = 60;
+        const g = Array.from({ length: rows }, () => Array(cols).fill("."));
+
+        const fillRect = (r1, c1, r2, c2, ch = "#") => {
+          for (let r = Math.max(0, r1); r <= Math.min(rows - 1, r2); r++) {
+            for (let c = Math.max(0, c1); c <= Math.min(cols - 1, c2); c++) {
+              g[r][c] = ch;
+            }
+          }
+        };
+
+        // Outer solid fortress walls
+        fillRect(0, 0, rows - 1, cols - 1, "#");
+        // Carve main interior cavern
+        fillRect(2, 2, rows - 4, cols - 3, ".");
+
+        // Horizontal sector dividers (Upper Wing, Central Hub, Lower Wing)
+        fillRect(19, 2, 20, cols - 3, "#");
+        fillRect(39, 2, 40, cols - 3, "#");
+
+        // Carve vertical shafts connecting the 3 horizontal tiers
+        // Left shaft (cols 28..35)
+        fillRect(18, 28, 41, 35, ".");
+        // Right-center shaft (cols 76..83)
+        fillRect(18, 76, 41, 83, ".");
+
+        // ==========================================
+        // CENTRAL HUB (Rows 21..38)
+        // ==========================================
+        // Entrance runway & Checkpoint Shrine (Safe zone on left)
+        fillRect(35, 2, 38, 27, "#");
+        g[34][6] = "P";
+        g[34][15] = "K"; // Checkpoint Shrine
+
+        // Left Shaft stepping ledges
+        fillRect(35, 30, 35, 33, "#");
+        fillRect(30, 28, 30, 31, "#");
+        fillRect(25, 32, 25, 35, "#");
+        fillRect(20, 29, 20, 32, "#");
+
+        // Central bridge between shafts (Cols 36..75)
+        fillRect(35, 36, 38, 75, "#");
+        fillRect(36, 44, 38, 50, ".");
+        fillRect(38, 44, 38, 50, "^");
+        fillRect(32, 45, 32, 49, "#");
+
+        fillRect(36, 58, 38, 65, ".");
+        fillRect(38, 58, 38, 65, "^");
+        g[31][61] = "F";
+
+        g[34][53] = "E";
+        g[34][71] = "C";
+
+        // Right-Center Shaft stepping ledges (Cols 76..83)
+        fillRect(35, 78, 35, 81, "#");
+        fillRect(30, 76, 30, 79, "#");
+        fillRect(25, 80, 25, 83, "#");
+        fillRect(20, 77, 20, 80, "#");
+
+        // Grand Sanctum Corridor (Right of Right Shaft, Cols 84..119)
+        fillRect(21, 84, 30, 119, "#");
+        fillRect(35, 84, 38, 119, "#");
+        // Carve open victory exit on right border (rows 31..34)
+        fillRect(31, 84, 34, 119, ".");
+        // 3-Key Grand Gate at col 96 sealing the exit
+        for (let r = 31; r <= 34; r++) {
+          g[r][96] = "L";
+        }
+
+        // ==========================================
+        // TOP-LEFT WING (Rows 2..18, Cols 2..35) -> KEY #1
+        // ==========================================
+        fillRect(15, 18, 15, 25, "#");
+        fillRect(12, 10, 12, 15, "#");
+        fillRect(9, 3, 9, 8, "#");
+        fillRect(18, 3, 18, 26, "^");
+        g[8][5] = "Q"; // Key 1 (Top-Left Corner)
+        g[11][12] = "E";
+        g[10][21] = "F";
+
+        // ==========================================
+        // TOP-RIGHT WING (Rows 2..18, Cols 36..117) -> KEY #2
+        // ==========================================
+        fillRect(15, 38, 18, 45, "#");
+        fillRect(15, 52, 18, 58, "#");
+        fillRect(18, 46, 18, 51, "^");
+        g[14][55] = "C";
+
+        fillRect(15, 64, 18, 74, "#");
+        fillRect(18, 59, 18, 63, "^");
+        g[11][61] = "F";
+
+        // Far Top-Right Vault (Cols 84..116)
+        fillRect(15, 85, 18, 92, "#");
+        fillRect(18, 93, 18, 106, "^");
+        g[12][96] = "F";
+        g[10][102] = "F";
+        fillRect(11, 107, 18, 116, "#");
+        g[10][112] = "Q"; // Key 2 (Top-Right Corner)
+
+        // ==========================================
+        // LOWER LABYRINTH (Rows 41..56, Cols 2..117) -> KEY #3
+        // ==========================================
+        // Left Shaft bottom landing
+        fillRect(45, 29, 45, 33, "#");
+        fillRect(50, 28, 50, 32, "#");
+        fillRect(55, 20, 58, 38, "#");
+
+        // Optional lower-left alcove with platforming
+        fillRect(55, 4, 58, 15, "#");
+        fillRect(56, 16, 56, 19, "^");
+        g[54][9] = "E";
+
+        // Lower central gauntlet leading right
+        fillRect(55, 44, 58, 54, "#");
+        fillRect(56, 39, 56, 43, "^");
+        g[54][49] = "C";
+
+        fillRect(55, 62, 58, 74, "#");
+        fillRect(56, 55, 56, 61, "^");
+        g[51][58] = "F";
+        g[54][68] = "E";
+
+        // Right-Center Shaft bottom connection
+        fillRect(45, 78, 45, 82, "#");
+        fillRect(50, 77, 50, 81, "#");
+        fillRect(55, 75, 58, 86, "#");
+
+        // Bottom-Right Vault (Cols 87..116) -> KEY #3
+        fillRect(56, 87, 56, 105, "^");
+        fillRect(52, 91, 52, 95, "#");
+        g[49][99] = "F";
+        fillRect(52, 106, 58, 116, "#");
+        g[51][109] = "C";
+        g[51][114] = "Q"; // Key 3 (Bottom-Right Corner)
+
+        return {
+          exitY: 260,
+          prompts: [],
+          grid: g.map((row) => row.join(""))
+        };
+      }
+
       const LEVELS = [
         // STAGE 1: AWAKENING (Pure Movement, Jump & Dash Tutorial - No Sword)
         {
           exitY: 124,
           prompts: [
             { x: 16, y: 112, text: "[ARROWS] MOVE" },
-            { x: 102, y: 92, text: "[Z] HOLD TO JUMP" },
-            { x: 204, y: 102, text: "[C] AIR DASH" }
+            { x: 102, y: 92, text: "[Z] JUMP" },
+            { x: 204, y: 102, text: "[C] DASH" }
           ],
           grid: [
             "########################################",
@@ -1322,9 +1665,8 @@
         {
           exitY: 108,
           prompts: [
-            { x: 84, y: 60, text: "CLAIM THE CELESTIAL BLADE", hideOnSword: true },
-            { x: 64, y: 60, text: "[ARROWS]+[X] 4-WAY SLASH & POGO!", reqSword: true },
-            { x: 184, y: 82, text: "[X] SHATTER GATE", reqSword: true }
+            { x: 84, y: 60, text: "[X] SLASH", reqSword: true },
+            { x: 184, y: 82, text: "[DOWN]+[X] POGO", reqSword: true }
           ],
           grid: [
             "########################################",
@@ -1356,9 +1698,7 @@
         // STAGE 3: FIRST BLOOD (Patrol Crawlers & Directional Slashing)
         {
           exitY: 108,
-          prompts: [
-            { x: 30, y: 64, text: "[X] SLASH OR [UP]+[X] OVERHEAD" }
-          ],
+          prompts: [],
           grid: [
             "########################################",
             "#......................................#",
@@ -1390,7 +1730,7 @@
         {
           exitY: 100,
           prompts: [
-            { x: 48, y: 54, text: "HOLD [DOWN]+[X] IN AIR TO POGO BOUNCE!" }
+            { x: 64, y: 54, text: "[DOWN]+[X] POGO" }
           ],
           grid: [
             "########################################",
@@ -1422,9 +1762,7 @@
         // STAGE 5: CHARGER ARENA (Dash-Dodge & Sealed Gate)
         {
           exitY: 108,
-          prompts: [
-            { x: 84, y: 50, text: "DASH PAST CHARGERS & STRIKE" }
-          ],
+          prompts: [],
           grid: [
             "########################################",
             "#......................................#",
@@ -1455,9 +1793,7 @@
         // STAGE 6: VERTICAL ASCENT (Staggered Flyers as Pogo Stepping Stones)
         {
           exitY: 60,
-          prompts: [
-            { x: 44, y: 34, text: "POGO FLYERS TO REACH THE HIGH LEDGE" }
-          ],
+          prompts: [],
           grid: [
             "########################################",
             "#......................................#",
@@ -1485,12 +1821,10 @@
           ]
         },
 
-        // STAGE 7: THE CRUCIBLE (Combined Chargers, Flyers & Spike Pogo)
+        // STAGE 7: REDESIGNED ENCOUNTER (Safe Spawn Distance + Wide Standing Platform Before Gate)
         {
           exitY: 100,
-          prompts: [
-            { x: 96, y: 42, text: "THE CELESTIAL CRUCIBLE" }
-          ],
+          prompts: [],
           grid: [
             "########################################",
             "#......................................#",
@@ -1504,11 +1838,11 @@
             "#...................F..................#",
             "#.............................##########",
             "#..................................G....",
-            "#.........C........................G....",
-            "#..P....######...........C.........G....",
-            "######..######........#######......#####",
-            "######..######........#######......#####",
-            "##############^^^^^^^^#######^^^^^^#####",
+            "#..................................G....",
+            "#..P............C........C.........G....",
+            "########....########..#######..#########",
+            "########....########..#######..#########",
+            "########^^^^########^^#######^^#########",
             "########################################",
             "########################################",
             "########################################",
@@ -1518,12 +1852,10 @@
           ]
         },
 
-        // STAGE 8: SUMMIT GATE (Final Gauntlet & Fortified Sanctuary Gate)
+        // STAGE 8: SUMMIT GATE (Final Standard Gauntlet Before Stage 9 Labyrinth)
         {
           exitY: 92,
-          prompts: [
-            { x: 88, y: 36, text: "FINAL STAGE: SUMMIT SANCTUARY" }
-          ],
+          prompts: [],
           grid: [
             "########################################",
             "#......................................#",
@@ -1538,10 +1870,10 @@
             "#..............F...................G....",
             "#..................................G....",
             "#..................................G....",
-            "#..P......C............C...........#####",
-            "######..#######....#######........######",
-            "######..#######....#######........######",
-            "######^^#######^^^^#######^^^^^^^^######",
+            "#..P..........C........C...........#####",
+            "########..#######....#######..##########",
+            "########..#######....#######..##########",
+            "########^^#######^^^^#######^^##########",
             "########################################",
             "########################################",
             "########################################",
@@ -1549,7 +1881,10 @@
             "########################################",
             "########################################"
           ]
-        }
+        },
+
+        // STAGE 9: THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania Finale)
+        buildStage9Labyrinth()
       ];
 
       class LevelManager {
@@ -1561,27 +1896,41 @@
           this.solids = [];
           this.spikes = [];
           this.enemies = [];
+          this.keys = [];
           this.pedestal = null;
+          this.checkpoint = null;
           this.prompts = [];
           this.exitY = 110;
           this.tick = 0;
         }
 
-        load(index) {
+        load(index, useCheckpointPos = false) {
           this.currentIndex = index % LEVELS.length;
-          // If looping back to Stage 1 after completing Stage 8, reset sword progression for a fresh run
-          if (this.currentIndex === 0 && index > 0) {
+          // If starting fresh at Stage 1, reset progression
+          if (this.currentIndex === 0) {
             this.game.player.hasSword = false;
             this.game.player.swordShrineClaimed = false;
+            this.game.player.keysCollected = 0;
+            this.game.checkpointStage = null;
+          } else {
+            this.game.player.hasSword = true;
+            this.game.player.swordShrineClaimed = true;
           }
 
+          this.game.player.hp = this.game.player.maxHp;
+          this.game.player.keysCollected = 0;
+
           const data = LEVELS[this.currentIndex];
+          this.rows = data.grid.length;
+          this.cols = data.grid[0].length;
           this.prompts = data.prompts || [];
           this.exitY = data.exitY || 110;
           this.solids = [];
           this.spikes = [];
           this.enemies = [];
+          this.keys = [];
           this.pedestal = null;
+          this.checkpoint = null;
 
           for (let r = 0; r < this.rows; r++) {
             this.solids[r] = [];
@@ -1601,14 +1950,28 @@
                 this.game.player.resetToSpawn();
               } else if (ch === "S") {
                 this.pedestal = { x: wx, y: wy };
-              } else if (ch === "G") {
-                // Dynamically measure contiguous vertical 'G' tiles so gates seal floor-to-ceiling
-                if (r === 0 || (data.grid[r - 1] && data.grid[r - 1][c] !== "G")) {
+              } else if (ch === "K") {
+                this.checkpoint = {
+                  x: wx,
+                  y: wy,
+                  activated: useCheckpointPos && this.game.checkpointStage === this.currentIndex
+                };
+                if (this.checkpoint.activated) {
+                  this.game.player.spawnX = wx;
+                  this.game.player.spawnY = wy - 1;
+                  this.game.player.resetToSpawn();
+                }
+              } else if (ch === "Q") {
+                this.keys.push({ x: wx, y: wy, collected: false });
+              } else if (ch === "G" || ch === "L") {
+                // Dynamically measure contiguous vertical 'G' or 'L' tiles so gates seal floor-to-ceiling
+                if (r === 0 || (data.grid[r - 1] && data.grid[r - 1][c] !== ch)) {
                   let gateTiles = 0;
-                  while (r + gateTiles < this.rows && data.grid[r + gateTiles] && data.grid[r + gateTiles][c] === "G") {
+                  while (r + gateTiles < this.rows && data.grid[r + gateTiles] && data.grid[r + gateTiles][c] === ch) {
                     gateTiles++;
                   }
-                  this.enemies.push(new Enemy(wx, wy, "gate", gateTiles * TILE));
+                  const gateType = ch === "L" ? "keygate" : "gate";
+                  this.enemies.push(new Enemy(wx, wy, gateType, gateTiles * TILE));
                 }
               } else if (ch === "E") {
                 this.enemies.push(new Enemy(wx, wy - 2, "patrol"));
@@ -1619,6 +1982,8 @@
               }
             }
           }
+
+          this.game.camera.snapTo(this.game.player, this.cols * TILE, this.rows * TILE);
         }
 
         collideSolid(x, y, w, h) {
@@ -1674,19 +2039,54 @@
 
         update(player) {
           this.tick++;
+          const camX = this.game.camera.scrollX;
+          const camY = this.game.camera.scrollY;
+          const margin = 96;
+
+          // Viewport-culled enemy updates for smooth 60fps in massive stages
           for (const enemy of this.enemies) {
-            enemy.update(this, player);
+            if (enemy.dead) continue;
+            if (
+              enemy.x + enemy.w >= camX - margin &&
+              enemy.x <= camX + WIDTH + margin &&
+              enemy.y + enemy.h >= camY - margin &&
+              enemy.y <= camY + HEIGHT + margin
+            ) {
+              enemy.update(this, player);
+            }
           }
 
-          // Seamless transition to next level when walking off right edge
-          if (player.x > WIDTH - 4) {
+          // Ambient upward particles from active Checkpoint Shrine
+          if (this.checkpoint && this.checkpoint.activated && this.tick % 5 === 0) {
+            this.game.particles.spawn(
+              this.checkpoint.x + 4 + (Math.random() - 0.5) * 6,
+              this.checkpoint.y + 4,
+              (Math.random() - 0.5) * 0.2,
+              -0.6 - Math.random() * 0.5,
+              this.tick % 10 === 0 ? PALETTE.white : PALETTE.playerNoDash,
+              1,
+              24,
+              -0.01,
+              0.98
+            );
+          }
+
+          // Seamless transition to next level when walking off right edge of the map
+          if (player.x > this.cols * TILE - 4) {
             this.load(this.currentIndex + 1);
           }
         }
 
         draw(ctx, player) {
-          for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
+          const camX = this.game.camera.x;
+          const camY = this.game.camera.y;
+          const startCol = Math.max(0, Math.floor(camX / TILE) - 1);
+          const endCol = Math.min(this.cols - 1, Math.ceil((camX + WIDTH) / TILE) + 1);
+          const startRow = Math.max(0, Math.floor(camY / TILE) - 1);
+          const endRow = Math.min(this.rows - 1, Math.ceil((camY + HEIGHT) / TILE) + 1);
+
+          for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
               const wx = c * TILE;
               const wy = r * TILE;
 
@@ -1711,10 +2111,11 @@
             }
           }
 
-          // Crisp Bitmap Pixel Prompts (Context-Aware for Sword Unlock)
+          // Crisp Bitmap Pixel Tutorial Prompts (Fade out as player progresses past them)
           for (const p of this.prompts) {
             if (p.reqSword && !player.hasSword) continue;
             if (p.hideOnSword && player.hasSword) continue;
+            if (player.x > p.x + 95) continue;
             const bobY = p.y + Math.round(Math.sin(this.tick * 0.06) * 1.5);
             const color = p.reqSword ? PALETTE.swordGlow : PALETTE.textSubtle;
             drawPixelText(ctx, p.text, p.x, bobY, color, PALETTE.textShadow);
@@ -1722,7 +2123,7 @@
 
           // Right-side exit arrow indicator
           const bobX = Math.round(Math.sin(this.tick * 0.1) * 2);
-          drawPixelText(ctx, ">>", WIDTH - 14 + bobX, this.exitY, PALETTE.swordGlow, PALETTE.textShadow);
+          drawPixelText(ctx, ">>", this.cols * TILE - 14 + bobX, this.exitY, PALETTE.swordGlow, PALETTE.textShadow);
 
           // Glowing Pedestal Shrine (Stage 2)
           if (this.pedestal) {
@@ -1744,7 +2145,49 @@
             }
           }
 
+          // Checkpoint Shrine (Stage 9)
+          if (this.checkpoint) {
+            const cx = this.checkpoint.x;
+            const cy = this.checkpoint.y;
+            if (this.checkpoint.activated) {
+              ctx.fillStyle = "rgba(84, 198, 235, 0.18)";
+              ctx.fillRect(cx - 2, cy - 36, 12, 44);
+              ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+              ctx.fillRect(cx + 2, cy - 36, 4, 44);
+            }
+            ctx.fillStyle = PALETTE.tileHighlight;
+            ctx.fillRect(cx, cy + 5, 8, 3);
+            ctx.fillStyle = this.checkpoint.activated ? PALETTE.playerNoDash : PALETTE.textSubtle;
+            ctx.fillRect(cx + 2, cy - 1, 4, 6);
+            ctx.fillStyle = this.checkpoint.activated ? PALETTE.white : PALETTE.tileEdge;
+            ctx.fillRect(cx + 3, cy - 3, 2, 2);
+          }
+
+          // Labyrinth Keys (Stage 9)
+          for (const k of this.keys) {
+            if (k.collected) continue;
+            const ky = k.y + Math.round(Math.sin(this.tick * 0.09 + k.x) * 2);
+            ctx.fillStyle = "rgba(254, 211, 48, 0.22)";
+            ctx.fillRect(k.x - 2, ky - 2, 10, 10);
+            ctx.fillStyle = PALETTE.swordGlow;
+            ctx.fillRect(k.x + 1, ky, 4, 3);
+            ctx.fillStyle = PALETTE.bgDeep;
+            ctx.fillRect(k.x + 2, ky + 1, 2, 1);
+            ctx.fillStyle = PALETTE.white;
+            ctx.fillRect(k.x + 2, ky + 3, 2, 4);
+            ctx.fillRect(k.x + 4, ky + 4, 2, 1);
+            ctx.fillRect(k.x + 4, ky + 6, 2, 1);
+          }
+
           for (const enemy of this.enemies) {
+            if (
+              enemy.x + enemy.w < camX - 24 ||
+              enemy.x > camX + WIDTH + 24 ||
+              enemy.y + enemy.h < camY - 24 ||
+              enemy.y > camY + HEIGHT + 24
+            ) {
+              continue;
+            }
             enemy.draw(ctx);
           }
         }
@@ -1828,6 +2271,15 @@
       // ==========================================
       // MAIN GAME CONTROLLER & FIXED STEP LOOP
       // ==========================================
+      const HEART_BITMAP = [
+        "0110110",
+        "1111111",
+        "1111111",
+        "0111110",
+        "0011100",
+        "0001000"
+      ];
+
       class Game {
         constructor() {
           this.canvas = document.getElementById("game");
@@ -1843,6 +2295,18 @@
           this.level = new LevelManager(this);
 
           this.hitstop = 0;
+          this.checkpointStage = null;
+          this.checkpointX = 0;
+          this.checkpointY = 0;
+
+          this.deathSequence = {
+            active: false,
+            timer: 0,
+            x: 0,
+            y: 0,
+            shards: [],
+            fadeAlpha: 0
+          };
 
           // Immediate start directly into Stage 1
           this.level.load(0);
@@ -1854,12 +2318,78 @@
           requestAnimationFrame((t) => this.loop(t));
         }
 
+        startDeathSequence(worldX, worldY) {
+          this.deathSequence.active = true;
+          this.deathSequence.timer = 0;
+          this.deathSequence.x = Math.round(worldX - this.camera.x);
+          this.deathSequence.y = Math.round(worldY - this.camera.y);
+          this.deathSequence.shards = [];
+          this.audio.musicMuted = true;
+          this.hitstop = 10;
+        }
+
+        updateDeathSequence() {
+          const ds = this.deathSequence;
+          ds.timer++;
+
+          // Frame 18: Crisp zigzag heart fracture crack
+          if (ds.timer === 18) {
+            this.audio.playHeartCrack();
+          }
+
+          // Frame 40: Heart shatters into flying pixel shards
+          if (ds.timer === 40) {
+            this.audio.playHeartShatter();
+            for (let i = 0; i < 8; i++) {
+              const angle = (Math.PI * 2 * i) / 8 + (Math.random() - 0.5) * 0.4;
+              const speed = 1.4 + Math.random() * 2.2;
+              ds.shards.push({
+                x: ds.x + (i % 2 === 0 ? -2 : 2),
+                y: ds.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1.2,
+                size: i % 2 === 0 ? 2 : 3
+              });
+            }
+          }
+
+          if (ds.timer > 40) {
+            for (const s of ds.shards) {
+              s.x += s.vx;
+              s.y += s.vy;
+              s.vy += 0.12;
+            }
+          }
+
+          // Frame 92: Respawn at Stage 9 Checkpoint if activated, otherwise Stage 1
+          if (ds.timer >= 92) {
+            ds.active = false;
+            ds.fadeAlpha = 1.0;
+            this.audio.musicMuted = false;
+
+            if (this.level.currentIndex === 8 && this.checkpointStage === 8) {
+              this.level.load(8, true);
+            } else {
+              this.level.load(0, false);
+            }
+          }
+        }
+
         update() {
-          this.camera.update();
+          if (this.deathSequence.fadeAlpha > 0) {
+            this.deathSequence.fadeAlpha = Math.max(0, this.deathSequence.fadeAlpha - 0.05);
+          }
 
           // Combat Pillar #5: Hitstop (Freeze frames on impact)
           if (this.hitstop > 0) {
+            this.camera.update(this.player, this.level.cols * TILE, this.level.rows * TILE);
             this.hitstop--;
+            this.input.update();
+            return;
+          }
+
+          if (this.deathSequence.active) {
+            this.updateDeathSequence();
             this.input.update();
             return;
           }
@@ -1867,42 +2397,112 @@
           this.background.update();
           this.player.update(this.input, this.level);
           this.level.update(this.player);
+          this.camera.update(this.player, this.level.cols * TILE, this.level.rows * TILE);
           this.particles.update();
           this.input.update();
         }
 
-        draw() {
-          this.ctx.save();
-          this.ctx.translate(this.camera.x, this.camera.y);
+        drawHeartIcon(x, y, filled) {
+          for (let r = 0; r < HEART_BITMAP.length; r++) {
+            const row = HEART_BITMAP[r];
+            for (let c = 0; c < row.length; c++) {
+              if (row[c] === "1") {
+                this.ctx.fillStyle = PALETTE.textShadow;
+                this.ctx.fillRect(x + c + 1, y + r + 1, 1, 1);
+                this.ctx.fillStyle = filled ? PALETTE.playerHair : "#2c334d";
+                this.ctx.fillRect(x + c, y + r, 1, 1);
+              }
+            }
+          }
+        }
 
-          this.background.draw(this.ctx, this.player.x, this.level.currentIndex);
-          this.level.draw(this.ctx, this.player);
-          this.player.draw(this.ctx);
-          this.particles.draw(this.ctx);
-          this.background.drawMotes(this.ctx);
-
-          // Crisp Pixel HUD Indicator (Top-Left)
-          drawPixelText(
-            this.ctx,
-            `STAGE ${this.level.currentIndex + 1}/${LEVELS.length}`,
-            10,
-            10,
-            PALETTE.textBright,
-            PALETTE.textShadow
-          );
-
-          if (this.player.hasSword) {
-            drawPixelText(
-              this.ctx,
-              "BLADE: READY",
-              WIDTH - 68,
-              10,
-              PALETTE.swordGlow,
-              PALETTE.textShadow
-            );
+        drawHUD() {
+          // 3 Crisp Pixel Hearts in Top-Right
+          const startX = WIDTH - 34;
+          const startY = 8;
+          for (let i = 0; i < this.player.maxHp; i++) {
+            this.drawHeartIcon(startX + i * 10, startY, i < this.player.hp);
           }
 
+          // Small 4x4 Key Icons beneath Hearts (when keys are collected in Stage 9)
+          for (let i = 0; i < this.player.keysCollected; i++) {
+            const kx = startX + i * 10 + 1;
+            const ky = startY + 9;
+            this.ctx.fillStyle = PALETTE.textShadow;
+            this.ctx.fillRect(kx + 1, ky + 1, 5, 5);
+            this.ctx.fillStyle = PALETTE.swordGlow;
+            this.ctx.fillRect(kx, ky, 3, 3);
+            this.ctx.fillStyle = PALETTE.white;
+            this.ctx.fillRect(kx + 1, ky + 3, 1, 3);
+            this.ctx.fillRect(kx + 2, ky + 4, 2, 1);
+          }
+        }
+
+        drawDeathOverlay() {
+          const ds = this.deathSequence;
+          this.ctx.fillStyle = "#000000";
+          this.ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+          const hx = Math.round(ds.x - 3);
+          const hy = Math.round(ds.y - 3);
+
+          if (ds.timer < 18) {
+            // Intact bright red pixel heart
+            for (let r = 0; r < HEART_BITMAP.length; r++) {
+              for (let c = 0; c < 7; c++) {
+                if (HEART_BITMAP[r][c] === "1") {
+                  this.ctx.fillStyle = PALETTE.playerHair;
+                  this.ctx.fillRect(hx + c, hy + r, 1, 1);
+                }
+              }
+            }
+          } else if (ds.timer < 40) {
+            // Split heart halves with zigzag crack down the center
+            for (let r = 0; r < HEART_BITMAP.length; r++) {
+              for (let c = 0; c < 7; c++) {
+                if (HEART_BITMAP[r][c] === "1") {
+                  const splitOffset = c < 3 ? -1 : (c > 3 ? 1 : (r % 2 === 0 ? -1 : 1));
+                  this.ctx.fillStyle = PALETTE.playerHair;
+                  this.ctx.fillRect(hx + c + splitOffset, hy + r, 1, 1);
+                }
+              }
+            }
+          } else {
+            // Scattering pixel shards
+            for (const s of ds.shards) {
+              this.ctx.fillStyle = PALETTE.playerHair;
+              this.ctx.fillRect(Math.round(s.x), Math.round(s.y), s.size, s.size);
+            }
+          }
+        }
+
+        draw() {
+          if (this.deathSequence.active) {
+            this.drawDeathOverlay();
+            return;
+          }
+
+          // Background rendered in screen-space with smooth parallax
+          this.background.draw(this.ctx, this.camera.x, this.level.currentIndex);
+
+          // World-space camera transform
+          this.ctx.save();
+          this.ctx.translate(-this.camera.x, -this.camera.y);
+
+          this.level.draw(this.ctx, this.player);
+          this.player.draw(this.ctx);
+          this.particles.draw(this.ctx, this.camera.x, this.camera.y);
+
           this.ctx.restore();
+
+          // Screen-space ambient motes & crisp HUD hearts
+          this.background.drawMotes(this.ctx);
+          this.drawHUD();
+
+          if (this.deathSequence.fadeAlpha > 0) {
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${this.deathSequence.fadeAlpha.toFixed(2)})`;
+            this.ctx.fillRect(0, 0, WIDTH, HEIGHT);
+          }
         }
 
         loop(now) {
