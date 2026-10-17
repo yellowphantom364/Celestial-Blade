@@ -206,6 +206,7 @@
           this.ctx = null;
           this.noiseBuffer = null;
           this.musicStarted = false;
+          this.musicMuted = false;
           this.musicStep = 0;
         }
 
@@ -673,6 +674,8 @@
             this.ghosts[i].life--;
             if (this.ghosts[i].life <= 0) this.ghosts.splice(i, 1);
           }
+        }
+
         draw(ctx, camX = 0, camY = 0) {
           for (const g of this.ghosts) {
             if (g.x + g.w < camX - 16 || g.x > camX + WIDTH + 16 || g.y + g.h < camY - 16 || g.y > camY + HEIGHT + 16) continue;
@@ -687,6 +690,68 @@
             const size = p.life < 4 ? Math.max(1, p.size - 1) : p.size;
             ctx.fillStyle = p.color;
             ctx.fillRect(Math.round(p.x - size / 2), Math.round(p.y - size / 2), size, size);
+          }
+        }
+      }
+
+      // ==========================================
+      // PHYSICS BODY BASE (Sub-Pixel AABB Collision)
+      // ==========================================
+      class PhysicsBody {
+        constructor(x, y, w, h) {
+          this.x = x;
+          this.y = y;
+          this.w = w;
+          this.h = h;
+          this.vx = 0;
+          this.vy = 0;
+          this.remX = 0;
+          this.remY = 0;
+          this.onGround = false;
+        }
+
+        intersects(other) {
+          return (
+            this.x < other.x + other.w &&
+            this.x + this.w > other.x &&
+            this.y < other.y + other.h &&
+            this.y + this.h > other.y
+          );
+        }
+
+        moveX(amount, level, onCollide) {
+          this.remX += amount;
+          let move = Math.round(this.remX);
+          if (move !== 0) {
+            this.remX -= move;
+            const sign = Math.sign(move);
+            while (move !== 0) {
+              if (!level.collideSolid(this.x + sign, this.y, this.w, this.h)) {
+                this.x += sign;
+                move -= sign;
+              } else {
+                if (onCollide) onCollide();
+                break;
+              }
+            }
+          }
+        }
+
+        moveY(amount, level, onCollide) {
+          this.remY += amount;
+          let move = Math.round(this.remY);
+          if (move !== 0) {
+            this.remY -= move;
+            const sign = Math.sign(move);
+            while (move !== 0) {
+              if (!level.collideSolid(this.x, this.y + sign, this.w, this.h)) {
+                this.y += sign;
+                move -= sign;
+              } else {
+                if (onCollide) onCollide();
+                break;
+              }
+            }
           }
         }
       }
