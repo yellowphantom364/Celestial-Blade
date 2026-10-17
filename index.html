@@ -1,0 +1,1932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Celestial Blade - 2D Platformer Prototype</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #090a14;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: monospace;
+    }
+    canvas {
+      width: 100vw;
+      height: 56.25vw; /* 16:9 ratio */
+      max-height: 100vh;
+      max-width: 177.78vh;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+      background: #101426;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="320" height="180"></canvas>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // ==========================================
+      // CONFIGURATION & PALETTE (16-Bit Palette)
+      // ==========================================
+      const WIDTH = 320;
+      const HEIGHT = 180;
+      const TILE = 8;
+
+      const PALETTE = {
+        bgDeep: "#0d1021",
+        bgMid: "#171c36",
+        bgMountain: "#20284e",
+        tileFill: "#1a2038",
+        tileEdge: "#3b4978",
+        tileHighlight: "#5c75b8",
+        spike: "#eb3b5a",
+        playerHair: "#ff3864",
+        playerNoDash: "#54c6eb",
+        playerBody: "#f5f6fa",
+        playerCloak: "#3867d6",
+        swordGlow: "#fed330",
+        enemyBody: "#8854d0",
+        enemyEye: "#ff3864",
+        white: "#ffffff",
+        textSubtle: "#7c8db5",
+        textBright: "#e2e8f0",
+        textShadow: "#090a14"
+      };
+
+      // ==========================================
+      // CRISP BITMAP PIXEL FONT (Zero Anti-Aliasing)
+      // ==========================================
+      const PIXEL_FONT = {
+        "A": ["010", "101", "111", "101", "101"],
+        "B": ["110", "101", "110", "101", "110"],
+        "C": ["011", "100", "100", "100", "011"],
+        "D": ["110", "101", "101", "101", "110"],
+        "E": ["111", "100", "110", "100", "111"],
+        "F": ["111", "100", "110", "100", "100"],
+        "G": ["011", "100", "101", "101", "011"],
+        "H": ["101", "101", "111", "101", "101"],
+        "I": ["111", "010", "010", "010", "111"],
+        "J": ["001", "001", "001", "101", "010"],
+        "K": ["101", "101", "110", "101", "101"],
+        "L": ["100", "100", "100", "100", "111"],
+        "M": ["10001", "11011", "10101", "10001", "10001"],
+        "N": ["1001", "1101", "1011", "1001", "1001"],
+        "O": ["010", "101", "101", "101", "010"],
+        "P": ["110", "101", "110", "100", "100"],
+        "Q": ["010", "101", "101", "011", "001"],
+        "R": ["110", "101", "110", "101", "101"],
+        "S": ["011", "100", "010", "001", "110"],
+        "T": ["111", "010", "010", "010", "010"],
+        "U": ["101", "101", "101", "101", "111"],
+        "V": ["101", "101", "101", "101", "010"],
+        "W": ["10001", "10001", "10101", "11011", "10001"],
+        "X": ["101", "101", "010", "101", "101"],
+        "Y": ["101", "101", "010", "010", "010"],
+        "Z": ["111", "001", "010", "100", "111"],
+        "0": ["111", "101", "101", "101", "111"],
+        "1": ["010", "110", "010", "010", "111"],
+        "2": ["110", "001", "010", "100", "111"],
+        "3": ["110", "001", "010", "001", "110"],
+        "4": ["101", "101", "111", "001", "001"],
+        "5": ["111", "100", "110", "001", "110"],
+        "6": ["011", "100", "111", "101", "111"],
+        "7": ["111", "001", "010", "010", "010"],
+        "8": ["111", "101", "111", "101", "111"],
+        "9": ["111", "101", "111", "001", "110"],
+        "[": ["11", "10", "10", "10", "11"],
+        "]": ["11", "01", "01", "01", "11"],
+        "/": ["001", "001", "010", "100", "100"],
+        ">": ["100", "010", "001", "010", "100"],
+        "-": ["000", "000", "111", "000", "000"],
+        "+": ["000", "010", "111", "010", "000"],
+        "&": ["010", "101", "010", "101", "011"],
+        ":": ["0", "1", "0", "1", "0"],
+        ".": ["0", "0", "0", "0", "1"],
+        "!": ["1", "1", "1", "0", "1"],
+        " ": ["00", "00", "00", "00", "00"]
+      };
+
+      function drawPixelText(ctx, text, x, y, color = PALETTE.textBright, shadowColor = PALETTE.textShadow) {
+        const str = String(text).toUpperCase();
+        let cursorX = Math.round(x);
+        const startY = Math.round(y);
+
+        for (let i = 0; i < str.length; i++) {
+          const ch = str[i];
+          const glyph = PIXEL_FONT[ch] || PIXEL_FONT[" "];
+          const gw = glyph[0].length;
+
+          if (shadowColor) {
+            ctx.fillStyle = shadowColor;
+            for (let r = 0; r < 5; r++) {
+              const row = glyph[r];
+              for (let c = 0; c < gw; c++) {
+                if (row[c] === "1") {
+                  ctx.fillRect(cursorX + c + 1, startY + r + 1, 1, 1);
+                }
+              }
+            }
+          }
+
+          ctx.fillStyle = color;
+          for (let r = 0; r < 5; r++) {
+            const row = glyph[r];
+            for (let c = 0; c < gw; c++) {
+              if (row[c] === "1") {
+                ctx.fillRect(cursorX + c, startY + r, 1, 1);
+              }
+            }
+          }
+
+          cursorX += gw + 1;
+        }
+      }
+
+      // ==========================================
+      // INPUT HANDLER
+      // ==========================================
+      class InputHandler {
+        constructor(audio) {
+          this.keys = {};
+          this.justPressed = {};
+          this.audio = audio;
+
+          window.addEventListener("keydown", (e) => {
+            this.audio.unlock();
+            const code = e.code;
+            if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyZ", "KeyX", "KeyC"].includes(code)) {
+              e.preventDefault();
+            }
+            if (!this.keys[code]) {
+              this.justPressed[code] = true;
+            }
+            this.keys[code] = true;
+          });
+
+          window.addEventListener("keyup", (e) => {
+            this.keys[e.code] = false;
+          });
+        }
+
+        update() {
+          this.justPressed = {};
+        }
+
+        isDown(code) {
+          return !!this.keys[code];
+        }
+
+        pressed(code) {
+          return !!this.justPressed[code];
+        }
+      }
+
+      // ==========================================
+      // PROCEDURAL WEB AUDIO SYNTHESIZER
+      // ==========================================
+      class AudioManager {
+        constructor() {
+          this.ctx = null;
+          this.noiseBuffer = null;
+          this.musicStarted = false;
+          this.musicStep = 0;
+        }
+
+        unlock() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+            this.createNoiseBuffer();
+          }
+          if (this.ctx && this.ctx.state === "suspended") {
+            this.ctx.resume();
+          }
+          if (this.ctx && !this.musicStarted) {
+            this.startMusic();
+          }
+        }
+
+        startMusic() {
+          this.musicStarted = true;
+          const melody = [
+            329.63, 392.00, 493.88, 659.25, 587.33, 493.88, 392.00, 493.88,
+            293.66, 369.99, 440.00, 587.33, 523.25, 440.00, 369.99, 440.00,
+            261.63, 329.63, 392.00, 523.25, 493.88, 392.00, 329.63, 392.00,
+            246.94, 329.63, 392.00, 493.88, 587.33, 493.88, 392.00, 329.63
+          ];
+          const bass = [
+            82.41, 82.41, 73.42, 73.42, 65.41, 65.41, 61.74, 73.42
+          ];
+
+          const stepDuration = 0.18;
+          setInterval(() => {
+            if (!this.ctx || this.ctx.state !== "running") return;
+            const now = this.ctx.currentTime;
+            const step = this.musicStep++;
+
+            const leadFreq = melody[step % melody.length];
+            if (leadFreq) {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = "triangle";
+              osc.frequency.setValueAtTime(leadFreq, now);
+              gain.gain.setValueAtTime(0.035, now);
+              gain.gain.exponentialRampToValueAtTime(0.002, now + stepDuration * 0.9);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now);
+              osc.stop(now + stepDuration * 0.95);
+            }
+
+            if (step % 4 === 0) {
+              const bassFreq = bass[Math.floor(step / 4) % bass.length];
+              const bOsc = this.ctx.createOscillator();
+              const bGain = this.ctx.createGain();
+              bOsc.type = "sine";
+              bOsc.frequency.setValueAtTime(bassFreq, now);
+              bGain.gain.setValueAtTime(0.06, now);
+              bGain.gain.exponentialRampToValueAtTime(0.004, now + stepDuration * 3.8);
+              bOsc.connect(bGain);
+              bGain.connect(this.ctx.destination);
+              bOsc.start(now);
+              bOsc.stop(now + stepDuration * 3.9);
+            }
+          }, stepDuration * 1000);
+        }
+
+        createNoiseBuffer() {
+          const bufferSize = this.ctx.sampleRate * 0.5;
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+          this.noiseBuffer = buffer;
+        }
+
+        playJump() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "square";
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(480, now + 0.11);
+
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.11);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.11);
+        }
+
+        playDash() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.setValueAtTime(1200, now);
+          filter.frequency.exponentialRampToValueAtTime(300, now + 0.14);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          noise.start(now);
+          noise.stop(now + 0.14);
+        }
+
+        playSwing() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "highpass";
+          filter.frequency.setValueAtTime(900, now);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          noise.start(now);
+          noise.stop(now + 0.07);
+        }
+
+        // Combat Pillar #2: Crisp, punchy "WHACK"
+        playHit() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+
+          const osc = this.ctx.createOscillator();
+          const oscGain = this.ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(45, now + 0.09);
+
+          oscGain.gain.setValueAtTime(0.35, now);
+          oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+
+          osc.connect(oscGain);
+          oscGain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "bandpass";
+          filter.frequency.setValueAtTime(1600, now);
+          filter.Q.setValueAtTime(1.2, now);
+
+          const noiseGain = this.ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.3, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+
+          noise.connect(filter);
+          filter.connect(noiseGain);
+          noiseGain.connect(this.ctx.destination);
+          noise.start(now);
+          noise.stop(now + 0.07);
+        }
+
+        playDefeatPop() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.06);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.18);
+
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.18);
+        }
+
+        playPickup() {
+          if (!this.ctx) return;
+          const notes = [440, 554.37, 659.25, 880];
+          notes.forEach((freq, idx) => {
+            const now = this.ctx.currentTime + idx * 0.065;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(freq, now);
+            gain.gain.setValueAtTime(0.14, now);
+            gain.gain.exponentialRampToValueAtTime(0.008, now + 0.18);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+          });
+        }
+
+        playDeath() {
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(200, now);
+          osc.frequency.linearRampToValueAtTime(55, now + 0.25);
+
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      }
+
+      // ==========================================
+      // CAMERA (Multi-Axis Screen Shake)
+      // ==========================================
+      class Camera {
+        constructor() {
+          this.x = 0;
+          this.y = 0;
+          this.shakeMag = 0;
+          this.shakeTimer = 0;
+        }
+
+        shake(magnitude, frames) {
+          this.shakeMag = Math.max(this.shakeMag, magnitude);
+          this.shakeTimer = Math.max(this.shakeTimer, frames);
+        }
+
+        update() {
+          if (this.shakeTimer > 0) {
+            this.shakeTimer--;
+            const decay = this.shakeTimer / 10;
+            const currentMag = this.shakeMag * Math.min(1, decay);
+            this.x = Math.round((Math.random() * 2 - 1) * currentMag);
+            this.y = Math.round((Math.random() * 2 - 1) * currentMag);
+          } else {
+            this.x = 0;
+            this.y = 0;
+            this.shakeMag = 0;
+          }
+        }
+      }
+
+      // ==========================================
+      // PARTICLE SYSTEM & AFTERIMAGES
+      // ==========================================
+      class ParticleSystem {
+        constructor() {
+          this.particles = [];
+          this.ghosts = [];
+        }
+
+        spawn(x, y, vx, vy, color, size, life, gravity = 0.08, drag = 0.94) {
+          this.particles.push({ x, y, vx, vy, color, size, life, maxLife: life, gravity, drag });
+        }
+
+        spawnHitSpray(x, y, dirX, dirY, count = 14) {
+          const baseAngle = Math.atan2(dirY, dirX);
+          for (let i = 0; i < count; i++) {
+            const spread = (Math.random() - 0.5) * 1.1;
+            const speed = 1.8 + Math.random() * 3.6;
+            const vx = Math.cos(baseAngle + spread) * speed;
+            const vy = Math.sin(baseAngle + spread) * speed - 0.5;
+            const color = i % 3 === 0 ? PALETTE.white : (i % 2 === 0 ? PALETTE.swordGlow : PALETTE.playerHair);
+            const size = Math.random() > 0.4 ? 2 : 3;
+            this.spawn(x, y, vx, vy, color, size, 12 + Math.floor(Math.random() * 10), 0.12, 0.92);
+          }
+        }
+
+        spawnBurst(x, y, color1, color2, count = 24) {
+          for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.3;
+            const speed = 1.0 + Math.random() * 3.2;
+            const color = i % 2 === 0 ? color1 : color2;
+            this.spawn(
+              x,
+              y,
+              Math.cos(angle) * speed,
+              Math.sin(angle) * speed,
+              color,
+              Math.random() > 0.5 ? 2 : 3,
+              16 + Math.floor(Math.random() * 14),
+              0.09,
+              0.94
+            );
+          }
+        }
+
+        addGhost(x, y, w, h, color) {
+          this.ghosts.push({ x, y, w, h, color, life: 8, maxLife: 8 });
+        }
+
+        update() {
+          for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vx *= p.drag;
+            p.vy = p.vy * p.drag + p.gravity;
+            p.life--;
+            if (p.life <= 0) this.particles.splice(i, 1);
+          }
+
+          for (let i = this.ghosts.length - 1; i >= 0; i--) {
+            this.ghosts[i].life--;
+            if (this.ghosts[i].life <= 0) this.ghosts.splice(i, 1);
+          }
+        }
+
+        draw(ctx) {
+          for (const g of this.ghosts) {
+            ctx.globalAlpha = (g.life / g.maxLife) * 0.45;
+            ctx.fillStyle = g.color;
+            ctx.fillRect(Math.round(g.x), Math.round(g.y), g.w, g.h);
+          }
+          ctx.globalAlpha = 1;
+
+          for (const p of this.particles) {
+            const size = p.life < 4 ? Math.max(1, p.size - 1) : p.size;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(Math.round(p.x - size / 2), Math.round(p.y - size / 2), size, size);
+          }
+        }
+      }
+
+      // ==========================================
+      // PHYSICS BODY BASE
+      // ==========================================
+      class PhysicsBody {
+        constructor(x, y, w, h) {
+          this.x = x;
+          this.y = y;
+          this.w = w;
+          this.h = h;
+          this.vx = 0;
+          this.vy = 0;
+          this.remX = 0;
+          this.remY = 0;
+          this.onGround = false;
+        }
+
+        intersects(other) {
+          return (
+            this.x < other.x + other.w &&
+            this.x + this.w > other.x &&
+            this.y < other.y + other.h &&
+            this.y + this.h > other.y
+          );
+        }
+
+        moveX(amount, level, onCollide) {
+          this.remX += amount;
+          let move = Math.round(this.remX);
+          if (move !== 0) {
+            this.remX -= move;
+            const sign = Math.sign(move);
+            while (move !== 0) {
+              if (!level.collideSolid(this.x + sign, this.y, this.w, this.h)) {
+                this.x += sign;
+                move -= sign;
+              } else {
+                if (onCollide) onCollide();
+                break;
+              }
+            }
+          }
+        }
+
+        moveY(amount, level, onCollide) {
+          this.remY += amount;
+          let move = Math.round(this.remY);
+          if (move !== 0) {
+            this.remY -= move;
+            const sign = Math.sign(move);
+            while (move !== 0) {
+              if (!level.collideSolid(this.x, this.y + sign, this.w, this.h)) {
+                this.y += sign;
+                move -= sign;
+              } else {
+                if (onCollide) onCollide();
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // ==========================================
+      // PLAYER (4-Directional Slash, Pogo, Dash & Jump)
+      // ==========================================
+      class Player extends PhysicsBody {
+        constructor(x, y, game) {
+          super(x, y, 6, 9);
+          this.game = game;
+          this.spawnX = x;
+          this.spawnY = y;
+
+          this.facing = 1;
+          this.hasSword = false; // Locked in Stage 1; unlocked at Stage 2 Celestial Shrine
+          this.swordShrineClaimed = false;
+
+          // Jump & Air state
+          this.coyoteTimer = 0;
+          this.jumpBuffer = 0;
+          this.pogoJumping = false;
+
+          // Dash state
+          this.canDash = true;
+          this.dashTimer = 0;
+          this.dashCooldown = 0;
+          this.dashDirX = 0;
+          this.dashDirY = 0;
+
+          // 4-Directional Combat state
+          this.attackTimer = 0;
+          this.attackMaxTimer = 8;
+          this.attackCooldown = 0;
+          this.atkDirX = 1;
+          this.atkDirY = 0;
+          this.swingHitTargets = new Set();
+          this.swingDidRecoil = false;
+          this.invulnTimer = 0;
+
+          // Visual squash/stretch
+          this.scaleX = 1;
+          this.scaleY = 1;
+        }
+
+        resetToSpawn() {
+          this.x = this.spawnX;
+          this.y = this.spawnY;
+          this.vx = 0;
+          this.vy = 0;
+          this.remX = 0;
+          this.remY = 0;
+          this.dashTimer = 0;
+          this.attackTimer = 0;
+          this.pogoJumping = false;
+          this.canDash = true;
+          this.invulnTimer = 20;
+        }
+
+        die() {
+          this.game.audio.playDeath();
+          this.game.camera.shake(5, 10);
+          this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.playerHair, PALETTE.white, 20);
+          this.game.hitstop = 3;
+          this.resetToSpawn();
+        }
+
+        // Computes the exact pixel rectangle used by BOTH the slash visual arc and the combat hitbox
+        getSlashBounds() {
+          const px = Math.round(this.x);
+          const py = Math.round(this.y);
+
+          if (this.atkDirY === -1) {
+            // Upward overhead crescent: 22px wide, extends 20px above player
+            return {
+              x: px - 8,
+              y: py - 20,
+              w: this.w + 16,
+              h: 22
+            };
+          } else if (this.atkDirY === 1) {
+            // Downward pogo crescent: 22px wide, extends 20px below player's feet
+            return {
+              x: px - 8,
+              y: py + this.h - 2,
+              w: this.w + 16,
+              h: 22
+            };
+          } else if (this.atkDirX === 1) {
+            // Rightward horizontal crescent: extends 22px right from player body, 17px tall
+            return {
+              x: px + this.w - 2,
+              y: py - 4,
+              w: 24,
+              h: this.h + 8
+            };
+          } else {
+            // Leftward horizontal crescent: extends 22px left from player body, 17px tall
+            return {
+              x: px - 22,
+              y: py - 4,
+              w: 24,
+              h: this.h + 8
+            };
+          }
+        }
+
+        update(input, level) {
+          if (this.invulnTimer > 0) this.invulnTimer--;
+          if (this.dashCooldown > 0) this.dashCooldown--;
+          if (this.attackCooldown > 0) this.attackCooldown--;
+
+          this.scaleX += (1 - this.scaleX) * 0.25;
+          this.scaleY += (1 - this.scaleY) * 0.25;
+
+          const wasOnGround = this.onGround;
+          this.onGround = level.collideSolid(this.x, this.y + 1, this.w, this.h);
+
+          if (this.onGround) {
+            this.coyoteTimer = 5;
+            this.pogoJumping = false;
+            if (!this.canDash && this.dashTimer <= 0) {
+              this.canDash = true;
+            }
+            if (!wasOnGround && this.vy >= 0) {
+              this.scaleX = 1.3;
+              this.scaleY = 0.7;
+              this.game.particles.spawn(this.x + 1, this.y + this.h, -0.6, -0.2, PALETTE.textBright, 1, 8, 0);
+              this.game.particles.spawn(this.x + this.w - 1, this.y + this.h, 0.6, -0.2, PALETTE.textBright, 1, 8, 0);
+            }
+          } else if (this.coyoteTimer > 0) {
+            this.coyoteTimer--;
+          }
+
+          if (this.vy >= 0) {
+            this.pogoJumping = false;
+          }
+
+          // 5-frame Jump Buffer
+          if (input.pressed("KeyZ")) {
+            this.jumpBuffer = 5;
+          } else if (this.jumpBuffer > 0) {
+            this.jumpBuffer--;
+          }
+
+          // Horizontal input
+          const moveInput = (input.isDown("ArrowRight") ? 1 : 0) - (input.isDown("ArrowLeft") ? 1 : 0);
+          if (moveInput !== 0 && this.attackTimer <= 0) {
+            this.facing = moveInput;
+          }
+
+          // Dash Initiation (C key)
+          if (input.pressed("KeyC") && this.canDash && this.dashCooldown <= 0) {
+            this.canDash = false;
+            this.pogoJumping = false;
+            this.dashTimer = 9;
+            this.dashCooldown = 14;
+
+            let dx = moveInput;
+            let dy = (input.isDown("ArrowDown") ? 1 : 0) - (input.isDown("ArrowUp") ? 1 : 0);
+            if (dx === 0 && dy === 0) dx = this.facing;
+
+            const len = Math.hypot(dx, dy);
+            this.dashDirX = dx / len;
+            this.dashDirY = dy / len;
+
+            this.vx = this.dashDirX * 4.4;
+            this.vy = this.dashDirY * 4.4;
+
+            this.scaleX = Math.abs(this.dashDirX) > Math.abs(this.dashDirY) ? 1.4 : 0.7;
+            this.scaleY = Math.abs(this.dashDirY) > Math.abs(this.dashDirX) ? 1.4 : 0.7;
+
+            this.game.audio.playDash();
+            this.game.camera.shake(2.5, 5);
+            this.game.hitstop = 2;
+            this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.playerNoDash, PALETTE.white, 10);
+          }
+
+          // Dash kinematic state vs Normal movement
+          if (this.dashTimer > 0) {
+            this.dashTimer--;
+            this.vx = this.dashDirX * 4.2;
+            this.vy = this.dashDirY * 4.2;
+            if (this.dashTimer % 2 === 0) {
+              this.game.particles.addGhost(this.x, this.y, this.w, this.h, PALETTE.playerNoDash);
+            }
+            if (this.dashTimer === 0) {
+              this.vx *= 0.5;
+              this.vy *= 0.4;
+            }
+          } else {
+            const maxRun = 1.85;
+            const accel = this.onGround ? 0.45 : 0.32;
+            const fric = this.onGround ? 0.52 : 0.22;
+
+            if (moveInput !== 0) {
+              if (Math.sign(this.vx) !== 0 && Math.sign(this.vx) !== moveInput) {
+                this.vx += moveInput * (accel * 1.6);
+              } else if (Math.abs(this.vx) < maxRun) {
+                this.vx = Math.min(maxRun, Math.max(-maxRun, this.vx + moveInput * accel));
+              } else {
+                this.vx += (moveInput * maxRun - this.vx) * 0.15;
+              }
+            } else {
+              if (Math.abs(this.vx) <= fric) {
+                this.vx = 0;
+              } else {
+                this.vx -= Math.sign(this.vx) * fric;
+              }
+            }
+
+            // Jump Execution (Buffered + Coyote)
+            if (this.jumpBuffer > 0 && this.coyoteTimer > 0) {
+              this.vy = -3.65;
+              this.pogoJumping = false;
+              this.jumpBuffer = 0;
+              this.coyoteTimer = 0;
+              this.onGround = false;
+              this.scaleX = 0.72;
+              this.scaleY = 1.32;
+              this.game.audio.playJump();
+              for (let i = 0; i < 5; i++) {
+                this.game.particles.spawn(
+                  this.x + 3,
+                  this.y + this.h,
+                  (Math.random() - 0.5) * 1.5,
+                  -Math.random() * 0.8,
+                  PALETTE.white,
+                  2,
+                  10,
+                  0.04
+                );
+              }
+            }
+
+            // Variable jump height (cut velocity on release unless in an active pogo launch)
+            if (!this.pogoJumping && !input.isDown("KeyZ") && this.vy < -1.0) {
+              this.vy *= 0.54;
+            }
+
+            // Gravity with Apex Hang, Hold-Jump Lift, and Full Pogo Launch Arc
+            const isApex = !this.onGround && Math.abs(this.vy) < 0.65;
+            const holdingLift = !this.onGround && this.vy < -0.5 && (input.isDown("KeyZ") || this.pogoJumping);
+            const gravity = isApex ? 0.10 : (holdingLift ? 0.155 : 0.235);
+            this.vy = Math.min(3.8, this.vy + gravity);
+          }
+
+          // 4-Directional Attack Initiation (X key - requires unlocking the blade in Stage 2)
+          if (this.hasSword && input.pressed("KeyX") && this.attackCooldown <= 0) {
+            this.attackTimer = this.attackMaxTimer;
+            this.attackCooldown = 12;
+            this.swingHitTargets.clear();
+            this.swingDidRecoil = false;
+            this.game.audio.playSwing();
+
+            // Determine 4-way slash direction (Down in air, Up, or Forward Left/Right)
+            if (input.isDown("ArrowDown") && !this.onGround) {
+              this.atkDirX = 0;
+              this.atkDirY = 1;
+            } else if (input.isDown("ArrowUp")) {
+              this.atkDirX = 0;
+              this.atkDirY = -1;
+            } else {
+              if (moveInput !== 0) this.facing = moveInput;
+              this.atkDirX = this.facing;
+              this.atkDirY = 0;
+            }
+          }
+
+          // Apply velocities against tilemap
+          this.moveX(this.vx, level, () => {
+            this.vx = 0;
+          });
+          this.moveY(this.vy, level, () => {
+            this.vy = 0;
+          });
+
+          // Active multi-frame slash hitbox check (runs before spike hazard check so down-slash pogo saves the player!)
+          if (this.attackTimer > 0) {
+            this.checkActiveSlash(level);
+            this.attackTimer--;
+          }
+
+          // Hazard / Spike collision (prevented if a downward pogo strike just bounced the player up)
+          const pogoSavedFromSpikes = (this.pogoJumping || (this.swingDidRecoil && this.atkDirY === 1)) && this.vy < 0;
+          if ((!pogoSavedFromSpikes && level.collideSpike(this.x, this.y, this.w, this.h)) || this.y > HEIGHT + 8) {
+            this.die();
+            return;
+          }
+
+          // Pedestal / Shrine interaction in Stage 2
+          if (level.pedestal && !this.swordShrineClaimed) {
+            const ped = level.pedestal;
+            if (
+              this.x < ped.x + 12 &&
+              this.x + this.w > ped.x - 4 &&
+              this.y < ped.y + 12 &&
+              this.y + this.h > ped.y - 8
+            ) {
+              this.swordShrineClaimed = true;
+              this.hasSword = true;
+              this.game.audio.playPickup();
+              this.game.hitstop = 6;
+              this.game.camera.shake(4, 12);
+              this.game.particles.spawnBurst(ped.x + 4, ped.y, PALETTE.swordGlow, PALETTE.white, 30);
+            }
+          }
+
+          // Enemy contact hazard
+          if (this.invulnTimer <= 0 && this.dashTimer <= 0) {
+            for (const enemy of level.enemies) {
+              if (!enemy.dead && !enemy.isDummy && enemy.knockbackTimer <= 0 && this.intersects(enemy)) {
+                this.die();
+                return;
+              }
+            }
+          }
+        }
+
+        checkActiveSlash(level) {
+          const hb = this.getSlashBounds();
+          let hitEnemyThisFrame = false;
+
+          for (const enemy of level.enemies) {
+            if (enemy.dead || this.swingHitTargets.has(enemy)) continue;
+            if (
+              hb.x < enemy.x + enemy.w &&
+              hb.x + hb.w > enemy.x &&
+              hb.y < enemy.y + enemy.h &&
+              hb.y + hb.h > enemy.y
+            ) {
+              this.swingHitTargets.add(enemy);
+              hitEnemyThisFrame = true;
+              enemy.takeHit(this.atkDirX, this.atkDirY, this.game);
+            }
+          }
+
+          // Downward pogo bounce off spikes as well
+          let pogoSpike = false;
+          if (!this.swingDidRecoil && this.atkDirY === 1 && level.collideSpike(hb.x, hb.y, hb.w, hb.h)) {
+            pogoSpike = true;
+            this.game.audio.playHit();
+            this.game.hitstop = Math.max(this.game.hitstop, 3);
+            this.game.camera.shake(3.5, 6);
+            this.game.particles.spawnHitSpray(this.x + this.w / 2, this.y + this.h + 6, 0, 1, 14);
+          }
+
+          if ((hitEnemyThisFrame || pogoSpike) && !this.swingDidRecoil) {
+            this.swingDidRecoil = true;
+            this.invulnTimer = 12;
+            this.dashTimer = 0;
+
+            if (this.atkDirY === 1) {
+              // Crisp, high downward slash pogo launch + instant dash refresh
+              this.vy = -4.45;
+              this.pogoJumping = true;
+              this.canDash = true;
+              this.onGround = false;
+              this.scaleX = 0.72;
+              this.scaleY = 1.38;
+            } else if (this.atkDirY === -1) {
+              // Subtle downward knockback to player when hitting upward
+              if (this.vy < 0) {
+                this.vy = 0.7;
+              } else {
+                this.vy = Math.min(this.vy + 0.85, 2.2);
+              }
+            } else {
+              // Subtle backward horizontal knockback when hitting left or right
+              this.vx = -this.atkDirX * 1.35;
+              if (!this.onGround && this.vy > 0) {
+                this.vy = -0.85;
+              }
+            }
+          }
+        }
+
+        drawSlashArc(ctx) {
+          if (this.attackTimer <= 0) return;
+
+          const hb = this.getSlashBounds();
+          const progress = 1 - this.attackTimer / this.attackMaxTimer;
+          const isFlashFrame = this.attackTimer >= this.attackMaxTimer - 2;
+          const mainColor = isFlashFrame ? PALETTE.white : PALETTE.swordGlow;
+          const innerColor = PALETTE.white;
+          const thick = Math.max(2, Math.round((1 - progress * 0.65) * 5));
+
+          ctx.fillStyle = mainColor;
+
+          if (this.atkDirY === -1) {
+            // Upward wide crescent filling exact hitbox bounds
+            ctx.fillRect(hb.x + 3, hb.y, hb.w - 6, thick + 2);
+            ctx.fillRect(hb.x + 1, hb.y + 2, hb.w - 2, thick);
+            ctx.fillRect(hb.x, hb.y + 4, thick, hb.h - 6);
+            ctx.fillRect(hb.x + hb.w - thick, hb.y + 4, thick, hb.h - 6);
+
+            ctx.fillStyle = innerColor;
+            ctx.fillRect(hb.x + 4, hb.y + 1, hb.w - 8, 2);
+          } else if (this.atkDirY === 1) {
+            // Downward pogo crescent filling exact hitbox bounds
+            const bottomY = hb.y + hb.h;
+            ctx.fillRect(hb.x + 3, bottomY - (thick + 2), hb.w - 6, thick + 2);
+            ctx.fillRect(hb.x + 1, bottomY - 2 - thick, hb.w - 2, thick);
+            ctx.fillRect(hb.x, hb.y + 2, thick, hb.h - 6);
+            ctx.fillRect(hb.x + hb.w - thick, hb.y + 2, thick, hb.h - 6);
+
+            ctx.fillStyle = innerColor;
+            ctx.fillRect(hb.x + 4, bottomY - 3, hb.w - 8, 2);
+          } else if (this.atkDirX === 1) {
+            // Rightward wide crescent filling exact hitbox bounds
+            const rightX = hb.x + hb.w;
+            ctx.fillRect(rightX - (thick + 3), hb.y + 3, thick + 3, hb.h - 6);
+            ctx.fillRect(rightX - 2 - thick, hb.y + 1, thick, hb.h - 2);
+            ctx.fillRect(hb.x + 2, hb.y, hb.w - 6, thick);
+            ctx.fillRect(hb.x + 2, hb.y + hb.h - thick, hb.w - 6, thick);
+
+            ctx.fillStyle = innerColor;
+            ctx.fillRect(rightX - 3, hb.y + 4, 2, hb.h - 8);
+          } else {
+            // Leftward wide crescent filling exact hitbox bounds
+            ctx.fillRect(hb.x, hb.y + 3, thick + 3, hb.h - 6);
+            ctx.fillRect(hb.x + 2, hb.y + 1, thick, hb.h - 2);
+            ctx.fillRect(hb.x + 4, hb.y, hb.w - 6, thick);
+            ctx.fillRect(hb.x + 4, hb.y + hb.h - thick, hb.w - 6, thick);
+
+            ctx.fillStyle = innerColor;
+            ctx.fillRect(hb.x + 1, hb.y + 4, 2, hb.h - 8);
+          }
+        }
+
+        draw(ctx) {
+          // Always draw active slash arc even during invulnerability blink
+          this.drawSlashArc(ctx);
+
+          if (this.invulnTimer > 0 && Math.floor(this.invulnTimer / 2) % 2 === 1) return;
+
+          const cx = Math.round(this.x + this.w / 2);
+          const by = Math.round(this.y + this.h);
+          const dw = Math.max(4, Math.round(this.w * this.scaleX));
+          const dh = Math.max(5, Math.round(this.h * this.scaleY));
+          const dx = Math.round(cx - dw / 2);
+          const dy = Math.round(by - dh);
+
+          // Cloak / Body
+          ctx.fillStyle = PALETTE.playerCloak;
+          ctx.fillRect(dx, dy + 3, dw, dh - 3);
+
+          // Head & Hair (color indicates dash availability)
+          const hairColor = this.canDash ? PALETTE.playerHair : PALETTE.playerNoDash;
+          ctx.fillStyle = hairColor;
+          ctx.fillRect(dx, dy, dw, 4);
+          ctx.fillRect(dx - this.facing * 2, dy + 1, 2, 3);
+
+          // Face / Eyes
+          ctx.fillStyle = PALETTE.playerBody;
+          const eyeX = this.facing === 1 ? dx + dw - 2 : dx;
+          ctx.fillRect(eyeX, dy + 2, 2, 2);
+
+          // Sword on back when unlocked and not actively swinging
+          if (this.hasSword && this.attackTimer <= 0) {
+            ctx.fillStyle = PALETTE.swordGlow;
+            const sx = this.facing === 1 ? dx - 2 : dx + dw;
+            ctx.fillRect(sx, dy + 2, 2, 5);
+          }
+        }
+      }
+
+      // ==========================================
+      // ENEMY & DESTRUCTIBLE BARRIER
+      // ==========================================
+      class Enemy extends PhysicsBody {
+        constructor(x, y, type = "patrol", customHeight = null) {
+          const isGate = type === "gate";
+          const h = isGate ? (customHeight || 24) : 10;
+          super(x, y, isGate ? 8 : 10, h);
+          this.type = type;
+          this.isDummy = isGate;
+          this.isFlyer = type === "flyer";
+          this.hp = isGate ? 3 : (type === "charger" ? 3 : 2);
+          this.maxHp = this.hp;
+          this.dir = -1;
+          this.baseY = y;
+          this.flashTimer = 0; // Combat Pillar #1: White flash frames
+          this.knockbackTimer = 0;
+          this.dead = false;
+          this.animTick = Math.floor(Math.random() * 30);
+        }
+
+        // Executes All 5 Combat Feedback Pillars on Hit
+        takeHit(dirX, dirY, game) {
+          this.hp--;
+
+          // 1. Flash pure white (#FFFFFF) for 4 frames
+          this.flashTimer = 4;
+
+          // 2. Crisp synthesized "WHACK" sound
+          game.audio.playHit();
+
+          // 3. Directional spray of sharp pixel particles
+          const impactX = this.x + this.w / 2;
+          const impactY = this.y + this.h / 2;
+          const sprayX = dirX !== 0 ? dirX : 0;
+          const sprayY = dirY !== 0 ? dirY : -0.25;
+          game.particles.spawnHitSpray(impactX, impactY, sprayX, sprayY, 16);
+
+          // 4. Instant knockback velocity & immediate separation nudge
+          if (!this.isDummy) {
+            if (dirY === 1) {
+              this.vy = 1.8;
+              this.vx = (this.x < game.player.x ? -1 : 1) * 1.1;
+            } else if (dirY === -1) {
+              this.vy = -2.6;
+              this.vx = (this.x < game.player.x ? -1 : 1) * 1.1;
+            } else {
+              this.vx = dirX * 3.5;
+              this.vy = -1.6;
+            }
+            this.knockbackTimer = 11;
+          } else {
+            this.knockbackTimer = 4;
+          }
+
+          // 5. Hitstop (Freeze) & Multi-axis Screen Shake
+          game.hitstop = 4;
+          game.camera.shake(4.5, 8);
+
+          // Lethal Defeat Pop Explosion
+          if (this.hp <= 0) {
+            this.dead = true;
+            game.hitstop = 5;
+            game.camera.shake(6.5, 12);
+            game.audio.playDefeatPop();
+            game.particles.spawnBurst(
+              impactX,
+              impactY,
+              PALETTE.white,
+              this.isDummy ? PALETTE.swordGlow : PALETTE.enemyEye,
+              28
+            );
+          }
+        }
+
+        update(level, player) {
+          if (this.dead) return;
+          this.animTick++;
+
+          if (this.flashTimer > 0) this.flashTimer--;
+          if (this.knockbackTimer > 0) this.knockbackTimer--;
+
+          if (this.isDummy) return;
+
+          if (this.isFlyer) {
+            if (this.knockbackTimer > 0) {
+              this.vx *= 0.85;
+              this.vy *= 0.85;
+            } else {
+              const wallAhead = level.collideSolid(this.x + this.dir * 2, this.y, this.w, this.h);
+              if (wallAhead || this.x < 16 || this.x > WIDTH - 26) {
+                this.dir *= -1;
+              }
+              this.vx = this.dir * 0.65;
+              const targetY = this.baseY + Math.sin(this.animTick * 0.08) * 8;
+              this.vy = (targetY - this.y) * 0.15;
+            }
+
+            this.moveX(this.vx, level, () => {
+              this.vx = 0;
+              this.dir *= -1;
+            });
+            this.moveY(this.vy, level, () => {
+              this.vy = 0;
+            });
+            return;
+          }
+
+          this.onGround = level.collideSolid(this.x, this.y + 1, this.w, this.h);
+
+          if (this.knockbackTimer > 0) {
+            this.vx *= 0.82;
+          } else {
+            const distToPlayerX = player.x - this.x;
+            const distToPlayerY = Math.abs(player.y - this.y);
+
+            if (this.type === "charger" && Math.abs(distToPlayerX) < 85 && distToPlayerY < 24) {
+              this.dir = Math.sign(distToPlayerX) || 1;
+              this.vx += (this.dir * 1.15 - this.vx) * 0.18;
+            } else {
+              const lookAheadX = this.dir === 1 ? this.x + this.w + 1 : this.x - 2;
+              const groundAhead = level.collideSolid(lookAheadX, this.y + this.h + 1, 1, 2);
+              const wallAhead = level.collideSolid(this.x + this.dir, this.y, this.w, this.h);
+
+              if ((this.onGround && !groundAhead) || wallAhead) {
+                this.dir *= -1;
+              }
+              this.vx = this.dir * 0.6;
+            }
+          }
+
+          this.vy = Math.min(3.5, this.vy + 0.22);
+
+          this.moveX(this.vx, level, () => {
+            this.vx = 0;
+            this.dir *= -1;
+          });
+          this.moveY(this.vy, level, () => {
+            this.vy = 0;
+          });
+
+          if (level.collideSpike(this.x, this.y, this.w, this.h) || this.y > HEIGHT + 8) {
+            this.takeHit(this.dir, 0, player.game);
+          }
+        }
+
+        draw(ctx) {
+          if (this.dead) return;
+
+          const shakeX = this.knockbackTimer > 0 && this.isDummy ? (this.knockbackTimer % 2 === 0 ? 1 : -1) : 0;
+          const rx = Math.round(this.x) + shakeX;
+          const ry = Math.round(this.y);
+
+          // Combat Pillar #1: Pure White Flash (#FFFFFF)
+          if (this.flashTimer > 0) {
+            ctx.fillStyle = PALETTE.white;
+            ctx.fillRect(rx, ry, this.w, this.h);
+            return;
+          }
+
+          if (this.isDummy) {
+            // Full floor-to-ceiling runic gate with evenly spaced glowing seals
+            ctx.fillStyle = "#303952";
+            ctx.fillRect(rx, ry, this.w, this.h);
+            ctx.fillStyle = PALETTE.tileEdge;
+            ctx.fillRect(rx, ry, 1, this.h);
+            ctx.fillRect(rx + this.w - 1, ry, 1, this.h);
+
+            ctx.fillStyle = PALETTE.swordGlow;
+            const spacing = Math.max(6, Math.floor((this.h - 6) / this.maxHp));
+            for (let i = 0; i < this.hp; i++) {
+              ctx.fillRect(rx + 2, ry + 4 + i * spacing, 4, 4);
+            }
+            return;
+          }
+
+          if (this.isFlyer) {
+            const wingFlap = Math.sin(this.animTick * 0.35) > 0 ? -2 : 2;
+            ctx.fillStyle = PALETTE.playerNoDash;
+            ctx.fillRect(rx - 3, ry + 3 + wingFlap, 3, 3);
+            ctx.fillRect(rx + this.w, ry + 3 + wingFlap, 3, 3);
+
+            ctx.fillStyle = "#4b7bec";
+            ctx.fillRect(rx + 1, ry + 1, this.w - 2, this.h - 2);
+
+            ctx.fillStyle = PALETTE.swordGlow;
+            ctx.fillRect(rx + 3, ry + 3, 4, 3);
+            return;
+          }
+
+          const bounce = Math.sin(this.animTick * 0.2) > 0.3 ? 1 : 0;
+          ctx.fillStyle = this.type === "charger" ? "#b33771" : PALETTE.enemyBody;
+          ctx.fillRect(rx, ry + bounce, this.w, this.h - bounce);
+
+          ctx.fillStyle = PALETTE.enemyEye;
+          ctx.fillRect(rx + 1, ry - 2 + bounce, 2, 2);
+          ctx.fillRect(rx + this.w - 3, ry - 2 + bounce, 2, 2);
+
+          ctx.fillStyle = PALETTE.white;
+          const eyeOffset = this.dir === 1 ? 5 : 1;
+          ctx.fillRect(rx + eyeOffset, ry + 3 + bounce, 4, 2);
+          ctx.fillStyle = PALETTE.enemyEye;
+          ctx.fillRect(rx + eyeOffset + (this.dir === 1 ? 2 : 0), ry + 3 + bounce, 2, 2);
+        }
+      }
+
+      // ==========================================
+      // LEVEL MANAGER & MAPS (8-Stage Campaign @ 40x23 Tiles)
+      // ==========================================
+      const LEVELS = [
+        // STAGE 1: AWAKENING (Pure Movement, Jump & Dash Tutorial - No Sword)
+        {
+          exitY: 124,
+          prompts: [
+            { x: 16, y: 112, text: "[ARROWS] MOVE" },
+            { x: 102, y: 92, text: "[Z] HOLD TO JUMP" },
+            { x: 204, y: 102, text: "[C] AIR DASH" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#.......................................",
+            "#.........######..#####.................",
+            "#.........######..#####.................",
+            "#..P......######..#####.................",
+            "############################^^^^########",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 2: THE BLADE SHRINE (Unlock Sword & Mandatory Full-Seal Barrier)
+        {
+          exitY: 108,
+          prompts: [
+            { x: 84, y: 60, text: "CLAIM THE CELESTIAL BLADE", hideOnSword: true },
+            { x: 64, y: 60, text: "[ARROWS]+[X] 4-WAY SLASH & POGO!", reqSword: true },
+            { x: 184, y: 82, text: "[X] SHATTER GATE", reqSword: true }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#...............S......................#",
+            "######........#######.......############",
+            "#..................................G....",
+            "#..P...............................G....",
+            "#######..#####.......#####.........G....",
+            "#######....................#############",
+            "#######^^^^^###^^^^^###^^^^#############",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 3: FIRST BLOOD (Patrol Crawlers & Directional Slashing)
+        {
+          exitY: 108,
+          prompts: [
+            { x: 30, y: 64, text: "[X] SLASH OR [UP]+[X] OVERHEAD" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#.........................E............#",
+            "#......................########........#",
+            "#.......................................",
+            "#..P..........E.........................",
+            "########...########............#########",
+            "########...########^^^^#####^^^#########",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 4: POGO HEIGHTS (Down-Slash Pogo Across Spike Chasms & Flyers)
+        {
+          exitY: 100,
+          prompts: [
+            { x: 48, y: 54, text: "HOLD [DOWN]+[X] IN AIR TO POGO BOUNCE!" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#.....................F.................",
+            "#...........F...........................",
+            "#..P....................................",
+            "#######..................#######...#####",
+            "#######....#####.........#######...#####",
+            "#######^^^^#####^^^^^^^^^#######^^^#####",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 5: CHARGER ARENA (Dash-Dodge & Sealed Gate)
+        {
+          exitY: 108,
+          prompts: [
+            { x: 84, y: 50, text: "DASH PAST CHARGERS & STRIKE" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#..............E.......................#",
+            "#...........#######....................#",
+            "#.............................##########",
+            "#..................................G....",
+            "#..P.....................C.........G....",
+            "######..######........########.....G....",
+            "######..######..####..########.....#####",
+            "##############^^^^^^^^##################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 6: VERTICAL ASCENT (Staggered Flyers as Pogo Stepping Stones)
+        {
+          exitY: 60,
+          prompts: [
+            { x: 44, y: 34, text: "POGO FLYERS TO REACH THE HIGH LEDGE" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#........................F..............",
+            "#.......................................",
+            "#..................F..........##########",
+            "#.............................##########",
+            "#............F................##########",
+            "#.............................##########",
+            "#..P..........................##########",
+            "########......#####...........##########",
+            "########......#####...........##########",
+            "########^^^^^^#####^^^^^^^^^^^##########",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 7: THE CRUCIBLE (Combined Chargers, Flyers & Spike Pogo)
+        {
+          exitY: 100,
+          prompts: [
+            { x: 96, y: 42, text: "THE CELESTIAL CRUCIBLE" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#...................F..................#",
+            "#.............................##########",
+            "#..................................G....",
+            "#.........C........................G....",
+            "#..P....######...........C.........G....",
+            "######..######........#######......#####",
+            "######..######........#######......#####",
+            "##############^^^^^^^^#######^^^^^^#####",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        },
+
+        // STAGE 8: SUMMIT GATE (Final Gauntlet & Fortified Sanctuary Gate)
+        {
+          exitY: 92,
+          prompts: [
+            { x: 88, y: 36, text: "FINAL STAGE: SUMMIT SANCTUARY" }
+          ],
+          grid: [
+            "########################################",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#......................................#",
+            "#.........................F............#",
+            "#.............................##########",
+            "#..............F...................G....",
+            "#..................................G....",
+            "#..................................G....",
+            "#..P......C............C...........#####",
+            "######..#######....#######........######",
+            "######..#######....#######........######",
+            "######^^#######^^^^#######^^^^^^^^######",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################",
+            "########################################"
+          ]
+        }
+      ];
+
+      class LevelManager {
+        constructor(game) {
+          this.game = game;
+          this.currentIndex = 0;
+          this.rows = 23;
+          this.cols = 40;
+          this.solids = [];
+          this.spikes = [];
+          this.enemies = [];
+          this.pedestal = null;
+          this.prompts = [];
+          this.exitY = 110;
+          this.tick = 0;
+        }
+
+        load(index) {
+          this.currentIndex = index % LEVELS.length;
+          // If looping back to Stage 1 after completing Stage 8, reset sword progression for a fresh run
+          if (this.currentIndex === 0 && index > 0) {
+            this.game.player.hasSword = false;
+            this.game.player.swordShrineClaimed = false;
+          }
+
+          const data = LEVELS[this.currentIndex];
+          this.prompts = data.prompts || [];
+          this.exitY = data.exitY || 110;
+          this.solids = [];
+          this.spikes = [];
+          this.enemies = [];
+          this.pedestal = null;
+
+          for (let r = 0; r < this.rows; r++) {
+            this.solids[r] = [];
+            this.spikes[r] = [];
+            const rowStr = data.grid[r] || "";
+            for (let c = 0; c < this.cols; c++) {
+              const ch = rowStr[c] || ".";
+              this.solids[r][c] = ch === "#";
+              this.spikes[r][c] = ch === "^";
+
+              const wx = c * TILE;
+              const wy = r * TILE;
+
+              if (ch === "P") {
+                this.game.player.spawnX = wx;
+                this.game.player.spawnY = wy - 1;
+                this.game.player.resetToSpawn();
+              } else if (ch === "S") {
+                this.pedestal = { x: wx, y: wy };
+              } else if (ch === "G") {
+                // Dynamically measure contiguous vertical 'G' tiles so gates seal floor-to-ceiling
+                if (r === 0 || (data.grid[r - 1] && data.grid[r - 1][c] !== "G")) {
+                  let gateTiles = 0;
+                  while (r + gateTiles < this.rows && data.grid[r + gateTiles] && data.grid[r + gateTiles][c] === "G") {
+                    gateTiles++;
+                  }
+                  this.enemies.push(new Enemy(wx, wy, "gate", gateTiles * TILE));
+                }
+              } else if (ch === "E") {
+                this.enemies.push(new Enemy(wx, wy - 2, "patrol"));
+              } else if (ch === "C") {
+                this.enemies.push(new Enemy(wx, wy - 2, "charger"));
+              } else if (ch === "F") {
+                this.enemies.push(new Enemy(wx, wy, "flyer"));
+              }
+            }
+          }
+        }
+
+        collideSolid(x, y, w, h) {
+          if (x < 0) return true;
+          const startCol = Math.max(0, Math.floor(x / TILE));
+          const endCol = Math.min(this.cols - 1, Math.floor((x + w - 1) / TILE));
+          const startRow = Math.max(0, Math.floor(y / TILE));
+          const endRow = Math.min(this.rows - 1, Math.floor((y + h - 1) / TILE));
+
+          for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
+              if (this.solids[r][c]) return true;
+            }
+          }
+
+          for (const e of this.enemies) {
+            if (!e.dead && e.isDummy) {
+              if (x < e.x + e.w && x + w > e.x && y < e.y + e.h && y + h > e.y) {
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+
+        // Lenient spike collision (inset 2px on sides, 3px from top)
+        collideSpike(x, y, w, h) {
+          const hx = x + 2;
+          const hy = y + 3;
+          const hw = Math.max(1, w - 4);
+          const hh = Math.max(1, h - 3);
+
+          const startCol = Math.max(0, Math.floor(hx / TILE));
+          const endCol = Math.min(this.cols - 1, Math.floor((hx + hw - 1) / TILE));
+          const startRow = Math.max(0, Math.floor(hy / TILE));
+          const endRow = Math.min(this.rows - 1, Math.floor((hy + hh - 1) / TILE));
+
+          for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
+              if (this.spikes[r][c]) {
+                const sx = c * TILE + 2;
+                const sy = r * TILE + 3;
+                const sw = TILE - 4;
+                const sh = TILE - 3;
+                if (hx < sx + sw && hx + hw > sx && hy < sy + sh && hy + hh > sy) {
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
+        }
+
+        update(player) {
+          this.tick++;
+          for (const enemy of this.enemies) {
+            enemy.update(this, player);
+          }
+
+          // Seamless transition to next level when walking off right edge
+          if (player.x > WIDTH - 4) {
+            this.load(this.currentIndex + 1);
+          }
+        }
+
+        draw(ctx, player) {
+          for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+              const wx = c * TILE;
+              const wy = r * TILE;
+
+              if (this.solids[r][c]) {
+                ctx.fillStyle = PALETTE.tileFill;
+                ctx.fillRect(wx, wy, TILE, TILE);
+
+                if (r > 0 && !this.solids[r - 1][c]) {
+                  ctx.fillStyle = PALETTE.tileHighlight;
+                  ctx.fillRect(wx, wy, TILE, 2);
+                } else {
+                  ctx.fillStyle = PALETTE.tileEdge;
+                  ctx.fillRect(wx + 1, wy + 1, 2, 2);
+                }
+              } else if (this.spikes[r][c]) {
+                ctx.fillStyle = PALETTE.spike;
+                ctx.fillRect(wx + 1, wy + 5, 2, 3);
+                ctx.fillRect(wx + 2, wy + 3, 1, 2);
+                ctx.fillRect(wx + 5, wy + 5, 2, 3);
+                ctx.fillRect(wx + 6, wy + 3, 1, 2);
+              }
+            }
+          }
+
+          // Crisp Bitmap Pixel Prompts (Context-Aware for Sword Unlock)
+          for (const p of this.prompts) {
+            if (p.reqSword && !player.hasSword) continue;
+            if (p.hideOnSword && player.hasSword) continue;
+            const bobY = p.y + Math.round(Math.sin(this.tick * 0.06) * 1.5);
+            const color = p.reqSword ? PALETTE.swordGlow : PALETTE.textSubtle;
+            drawPixelText(ctx, p.text, p.x, bobY, color, PALETTE.textShadow);
+          }
+
+          // Right-side exit arrow indicator
+          const bobX = Math.round(Math.sin(this.tick * 0.1) * 2);
+          drawPixelText(ctx, ">>", WIDTH - 14 + bobX, this.exitY, PALETTE.swordGlow, PALETTE.textShadow);
+
+          // Glowing Pedestal Shrine (Stage 2)
+          if (this.pedestal) {
+            const px = this.pedestal.x;
+            const py = this.pedestal.y;
+            ctx.fillStyle = PALETTE.tileHighlight;
+            ctx.fillRect(px, py + 5, 8, 3);
+            ctx.fillRect(px + 2, py + 3, 4, 2);
+
+            if (!player.swordShrineClaimed) {
+              const floatY = py - 5 + Math.round(Math.sin(this.tick * 0.08) * 2);
+              ctx.fillStyle = "rgba(254, 211, 48, 0.25)";
+              ctx.fillRect(px - 2, floatY - 2, 12, 12);
+              ctx.fillStyle = PALETTE.white;
+              ctx.fillRect(px + 3, floatY, 2, 6);
+              ctx.fillStyle = PALETTE.swordGlow;
+              ctx.fillRect(px + 1, floatY + 5, 6, 1);
+              ctx.fillRect(px + 3, floatY + 6, 2, 2);
+            }
+          }
+
+          for (const enemy of this.enemies) {
+            enemy.draw(ctx);
+          }
+        }
+      }
+
+      // ==========================================
+      // AMBIENT BACKGROUND (Crisp Stepped Pixel Mountains)
+      // ==========================================
+      class Background {
+        constructor() {
+          this.stars = Array.from({ length: 38 }, () => ({
+            x: Math.floor(Math.random() * WIDTH),
+            y: Math.floor(Math.random() * (HEIGHT - 40)),
+            size: Math.random() > 0.8 ? 2 : 1,
+            blinkOffset: Math.random() * 100
+          }));
+
+          this.motes = Array.from({ length: 22 }, () => ({
+            x: Math.random() * WIDTH,
+            y: Math.random() * HEIGHT,
+            vx: 0.1 + Math.random() * 0.2,
+            vy: -0.05 - Math.random() * 0.15
+          }));
+          this.tick = 0;
+        }
+
+        update() {
+          this.tick++;
+          for (const m of this.motes) {
+            m.x = (m.x + m.vx + WIDTH) % WIDTH;
+            m.y = (m.y + m.vy + HEIGHT) % HEIGHT;
+          }
+        }
+
+        drawSteppedPeak(ctx, baseX, peakY, halfWidth, stepSize, color) {
+          ctx.fillStyle = color;
+          const totalWidth = halfWidth * 2;
+          for (let dx = 0; dx < totalWidth; dx += stepSize) {
+            const distFromCenter = Math.abs(dx + stepSize / 2 - halfWidth);
+            const heightOffset = Math.floor(distFromCenter / stepSize) * stepSize;
+            const colTop = Math.round(peakY + heightOffset);
+            if (colTop < HEIGHT) {
+              ctx.fillRect(Math.round(baseX + dx), colTop, stepSize, HEIGHT - colTop);
+            }
+          }
+        }
+
+        draw(ctx, playerX, levelIndex) {
+          ctx.fillStyle = PALETTE.bgDeep;
+          ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+          for (const s of this.stars) {
+            const alpha = 0.35 + 0.45 * Math.sin(this.tick * 0.04 + s.blinkOffset);
+            ctx.fillStyle = `rgba(209, 216, 224, ${alpha.toFixed(2)})`;
+            ctx.fillRect(s.x, s.y, s.size, s.size);
+          }
+
+          const parallax1 = Math.floor((playerX * 0.08 + levelIndex * 20) / 2) * 2;
+          for (let i = -1; i < 6; i++) {
+            const mx = i * 72 - (parallax1 % 72);
+            const peakY = 64 + (Math.abs(i) % 2) * 16;
+            this.drawSteppedPeak(ctx, mx, peakY, 36, 4, PALETTE.bgMid);
+          }
+
+          const parallax2 = Math.floor((playerX * 0.16 + levelIndex * 40) / 2) * 2;
+          for (let i = -1; i < 8; i++) {
+            const mx = i * 52 - (parallax2 % 52);
+            const peakY = 96 + (Math.abs(i) % 3) * 8;
+            this.drawSteppedPeak(ctx, mx, peakY, 26, 2, PALETTE.bgMountain);
+          }
+        }
+
+        drawMotes(ctx) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+          for (const m of this.motes) {
+            ctx.fillRect(Math.round(m.x), Math.round(m.y), 1, 1);
+          }
+        }
+      }
+
+      // ==========================================
+      // MAIN GAME CONTROLLER & FIXED STEP LOOP
+      // ==========================================
+      class Game {
+        constructor() {
+          this.canvas = document.getElementById("game");
+          this.ctx = this.canvas.getContext("2d");
+          this.ctx.imageSmoothingEnabled = false;
+
+          this.audio = new AudioManager();
+          this.input = new InputHandler(this.audio);
+          this.camera = new Camera();
+          this.particles = new ParticleSystem();
+          this.background = new Background();
+          this.player = new Player(32, 120, this);
+          this.level = new LevelManager(this);
+
+          this.hitstop = 0;
+
+          // Immediate start directly into Stage 1
+          this.level.load(0);
+
+          this.lastTime = performance.now();
+          this.accumulator = 0;
+          this.step = 1000 / 60;
+
+          requestAnimationFrame((t) => this.loop(t));
+        }
+
+        update() {
+          this.camera.update();
+
+          // Combat Pillar #5: Hitstop (Freeze frames on impact)
+          if (this.hitstop > 0) {
+            this.hitstop--;
+            this.input.update();
+            return;
+          }
+
+          this.background.update();
+          this.player.update(this.input, this.level);
+          this.level.update(this.player);
+          this.particles.update();
+          this.input.update();
+        }
+
+        draw() {
+          this.ctx.save();
+          this.ctx.translate(this.camera.x, this.camera.y);
+
+          this.background.draw(this.ctx, this.player.x, this.level.currentIndex);
+          this.level.draw(this.ctx, this.player);
+          this.player.draw(this.ctx);
+          this.particles.draw(this.ctx);
+          this.background.drawMotes(this.ctx);
+
+          // Crisp Pixel HUD Indicator (Top-Left)
+          drawPixelText(
+            this.ctx,
+            `STAGE ${this.level.currentIndex + 1}/${LEVELS.length}`,
+            10,
+            10,
+            PALETTE.textBright,
+            PALETTE.textShadow
+          );
+
+          if (this.player.hasSword) {
+            drawPixelText(
+              this.ctx,
+              "BLADE: READY",
+              WIDTH - 68,
+              10,
+              PALETTE.swordGlow,
+              PALETTE.textShadow
+            );
+          }
+
+          this.ctx.restore();
+        }
+
+        loop(now) {
+          let delta = now - this.lastTime;
+          this.lastTime = now;
+          if (delta > 100) delta = 100;
+
+          this.accumulator += delta;
+          while (this.accumulator >= this.step) {
+            this.update();
+            this.accumulator -= this.step;
+          }
+
+          this.draw();
+          requestAnimationFrame((t) => this.loop(t));
+        }
+      }
+
+      if (document.readyState === "loading") {
+        window.addEventListener("DOMContentLoaded", () => new Game());
+      } else {
+        new Game();
+      }
+    })();
+  </script>
+</body>
+</html>
