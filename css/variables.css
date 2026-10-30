@@ -1,0 +1,13 @@
+:root {
+  --bg-void: #06070e;
+  --bg-frame: #0c0f1d;
+  --bg-panel: rgba(13, 16, 33, 0.88);
+  --border-subtle: rgba(92, 117, 184, 0.28);
+  --border-glow: rgba(254, 211, 48, 0.45);
+  --accent-gold: #fed330;
+  --accent-crimson: #ff3864;
+  --accent-cyan: #54c6eb;
+  --text-primary: #e2e8f0;
+  --text-muted: #7c8db5;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+}

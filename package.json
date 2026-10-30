@@ -1,0 +1,23 @@
+{
+  "name": "celestial-blade",
+  "version": "1.0.0",
+  "description": "A 16-bit dark-celestial 2D action platformer featuring 4-directional sword combat, pogo mechanics, soul abilities, and a multi-phase boss encounter.",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "build": "python3 scripts/build.py",
+    "build:node": "node scripts/build.js"
+  },
+  "keywords": [
+    "gamedev",
+    "html5-canvas",
+    "platformer",
+    "metroidvania",
+    "pixel-art",
+    "web-audio",
+    "javascript"
+  ],
+  "author": "yellowphantom364",
+  "license": "MIT"
+}
