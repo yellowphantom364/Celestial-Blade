@@ -6,8 +6,8 @@
   "main": "src/main.js",
   "scripts": {
     "dev": "python3 -m http.server 8080",
-    "build": "python3 scripts/build.py",
-    "build:node": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "build:py": "python3 scripts/build.py"
   },
   "keywords": [
     "gamedev",
