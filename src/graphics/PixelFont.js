@@ -1,8 +1,5 @@
 import { PALETTE } from "../config/palette.js";
 
-/**
- * 5-row crisp bitmap pixel font with text measurement and alignment helpers.
- */
 export const PIXEL_FONT = Object.freeze({
   A: ["010", "101", "111", "101", "101"],
   B: ["110", "101", "110", "101", "110"],

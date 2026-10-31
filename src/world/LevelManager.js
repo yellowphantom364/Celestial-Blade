@@ -5,10 +5,6 @@ import { Enemy } from "../entities/Enemy.js";
 import { drawPixelText } from "../graphics/PixelFont.js";
 import { STAGES } from "./stages.js";
 
-/**
- * Tilemap loader, neighbor-aware autotiler, collision detector,
- * and stage lifecycle manager with persistent HP across stage transitions.
- */
 export class LevelManager {
   constructor(game) {
     this.game = game;
@@ -38,7 +34,6 @@ export class LevelManager {
     this.currentIndex = Math.max(0, Math.min(STAGES.length - 1, index));
     this.game.saveManager.unlockStage(this.currentIndex);
 
-    // Select biome soundtrack
     const meta = STAGE_METADATA[this.currentIndex] || STAGE_METADATA[0];
     if (meta.biome === "eclipse") {
       this.game.sound.setTrack("boss");
@@ -58,7 +53,6 @@ export class LevelManager {
       this.game.player.swordShrineClaimed = true;
     }
 
-    // Only restore full HP on new run, shrine respawn, or shrine warp — NOT when walking between stages!
     if (restoreFullHp || this.game.player.hp <= 0) {
       this.game.player.hp = this.game.player.maxHp;
     }
@@ -249,7 +243,6 @@ export class LevelManager {
       );
     }
 
-    // Advance to next stage when crossing right exit boundary (KEEPING current HP!)
     if (player.x > this.cols * VIEWPORT.TILE - 4) {
       if (this.currentIndex < STAGES.length - 1) {
         this.load(this.currentIndex + 1, false, false);
@@ -266,7 +259,6 @@ export class LevelManager {
     const startRow = Math.max(0, Math.floor(camY / VIEWPORT.TILE) - 1);
     const endRow = Math.min(this.rows - 1, Math.ceil((camY + VIEWPORT.HEIGHT) / VIEWPORT.TILE) + 1);
 
-    // Neighbor-aware autotiled solid blocks & spikes
     for (let r = startRow; r <= endRow; r++) {
       for (let c = startCol; c <= endCol; c++) {
         const wx = c * VIEWPORT.TILE;
@@ -317,7 +309,6 @@ export class LevelManager {
       }
     }
 
-    // Contextual tutorial prompts
     for (const p of this.prompts) {
       if (p.reqSword && !player.hasSword) continue;
       if (p.hideOnSword && player.hasSword) continue;
@@ -327,7 +318,6 @@ export class LevelManager {
       drawPixelText(ctx, p.text, p.x, bobY, color, PALETTE.textShadow);
     }
 
-    // Right exit indicator (for stages 1-11)
     if (this.currentIndex < STAGES.length - 1) {
       const bobX = Math.round(Math.sin(this.tick * 0.1) * 2);
       drawPixelText(
@@ -340,7 +330,6 @@ export class LevelManager {
       );
     }
 
-    // Stage 2 Celestial Blade Shrine
     if (this.pedestal) {
       const px = this.pedestal.x;
       const py = this.pedestal.y;
@@ -360,7 +349,6 @@ export class LevelManager {
       }
     }
 
-    // Attunement Checkpoint Shrine
     if (this.checkpoint) {
       const cx = this.checkpoint.x;
       const cy = this.checkpoint.y;
@@ -378,7 +366,6 @@ export class LevelManager {
       ctx.fillRect(cx + 3, cy - 5, 2, 3);
     }
 
-    // Starlight Relics
     for (const r of this.relics) {
       if (r.collected) continue;
       const ry = r.y + Math.round(Math.sin(this.tick * 0.08 + r.x) * 2);
@@ -391,7 +378,6 @@ export class LevelManager {
       ctx.fillRect(r.x + 2, ry + 2, 2, 2);
     }
 
-    // Sanctum Keys
     for (const k of this.keys) {
       if (k.collected) continue;
       const ky = k.y + Math.round(Math.sin(this.tick * 0.09 + k.x) * 2);
@@ -407,7 +393,6 @@ export class LevelManager {
       ctx.fillRect(k.x + 4, ky + 6, 2, 1);
     }
 
-    // Viewport-culled enemies
     for (const enemy of this.enemies) {
       if (
         enemy.x + enemy.w < camX - 24 ||
@@ -420,7 +405,6 @@ export class LevelManager {
       enemy.draw(ctx);
     }
 
-    // Stage 12 Boss
     if (this.boss && !this.boss.dead) {
       this.boss.draw(ctx);
     }

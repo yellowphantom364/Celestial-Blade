@@ -15,10 +15,6 @@ import { InputManager } from "./InputManager.js";
 import { ParticleSystem } from "./ParticleSystem.js";
 import { SaveManager } from "./SaveManager.js";
 
-/**
- * Primary game coordinator managing the fixed-timestep loop,
- * state transitions, Attunement Shrine respawns/warping, menus, and death/victory sequences.
- */
 export class Game {
   constructor(canvas, viewportFrame) {
     this.canvas = canvas;
@@ -52,7 +48,6 @@ export class Game {
     this.runDeaths = 0;
     this.victoryDelayTimer = 0;
 
-    // Active Attunement Shrine respawn state (defaults to Shrine I on Stage 0)
     this.checkpointStage = this.saveManager.data.lastShrineStage || 0;
     this.checkpointX = 0;
     this.checkpointY = 0;
@@ -66,7 +61,6 @@ export class Game {
       fadeAlpha: 0
     };
 
-    // Preload background stage for title screen ambiance
     this.level.load(this.checkpointStage, true, true);
 
     this.lastTime = performance.now();
@@ -198,7 +192,6 @@ export class Game {
       }
     }
 
-    // Respawn back at the last attuned Shrine with full HP (Hollow Knight bench style!)
     if (ds.timer >= 86) {
       ds.active = false;
       ds.fadeAlpha = 1.0;
@@ -326,7 +319,6 @@ export class Game {
     this.uiTick++;
     this.input.pollGamepad();
 
-    // Global hotkeys for Mute [M] and CRT Scanline Filter [T]
     if (this.input.actionPressed("mute")) {
       this.toggleMute();
     }
@@ -429,7 +421,6 @@ export class Game {
       return;
     }
 
-    // Render active game world
     this.ctx.save();
     this.ctx.translate(-this.camera.x, -this.camera.y);
 

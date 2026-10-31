@@ -3,11 +3,6 @@ import { PALETTE } from "../config/palette.js";
 import { PhysicsBody } from "../core/PhysicsBody.js";
 import { SpriteRenderer } from "../graphics/SpriteRenderer.js";
 
-/**
- * Player entity featuring 4-directional sword combat, 3-hit combo chains,
- * downward pogo bounce, wall-slide/wall-jump, horizontal dash, and Hollow Knight-style
- * Hold-to-Focus Soul Healing + Tap-to-Cast Astral Wave.
- */
 export class Player extends PhysicsBody {
   constructor(x, y, game) {
     super(x, y, PLAYER_CONFIG.WIDTH, PLAYER_CONFIG.HEIGHT);
@@ -25,7 +20,6 @@ export class Player extends PhysicsBody {
     this.hasSword = false;
     this.swordShrineClaimed = false;
 
-    // Platforming state
     this.coyoteTimer = 0;
     this.jumpBuffer = 0;
     this.pogoJumping = false;
@@ -33,13 +27,11 @@ export class Player extends PhysicsBody {
     this.wallDir = 0;
     this.wallJumpLock = 0;
 
-    // Dash state
     this.canDash = true;
     this.dashTimer = 0;
     this.dashCooldown = 0;
     this.dashDirX = 0;
 
-    // Combat & Combo state
     this.attackTimer = 0;
     this.attackMaxTimer = PLAYER_CONFIG.ATTACK_FRAMES;
     this.attackCooldown = 0;
@@ -51,14 +43,12 @@ export class Player extends PhysicsBody {
     this.swingDidRecoil = false;
     this.invulnTimer = 0;
 
-    // Hollow Knight-style Soul Focus channel & Astral Wave projectiles
     this.skillHoldTimer = 0;
     this.skillConsumedThisHold = false;
     this.focusTimer = 0;
     this.focusFlashTimer = 0;
     this.waves = [];
 
-    // Visual animation & Verlet scarf nodes
     this.animTick = 0;
     this.scaleX = 1;
     this.scaleY = 1;
@@ -159,7 +149,6 @@ export class Player extends PhysicsBody {
     this.game.particles.addShockwave(this.x + 3, this.y + 4, 26, PALETTE.white, 16);
     this.game.particles.addFloatingText(this.x - 10, this.y - 10, "SOUL FOCUS!", PALETTE.white, 38);
 
-    // Spawn flying heart from player's body in screen-space directly into the HUD heart slot!
     const targetHeartIndex = Math.min(this.maxHp - 1, this.hp);
     const heartSpan = this.maxHp * 10;
     const hudStartX = VIEWPORT.WIDTH - heartSpan - 6;
@@ -254,7 +243,6 @@ export class Player extends PhysicsBody {
         );
       }
 
-      // Check collision against enemies
       for (const enemy of level.enemies) {
         if (enemy.dead || w.hitSet.has(enemy)) continue;
         if (
@@ -268,7 +256,6 @@ export class Player extends PhysicsBody {
         }
       }
 
-      // Check collision against Boss
       if (level.boss && !level.boss.dead && !w.hitSet.has(level.boss)) {
         const b = level.boss;
         if (w.x < b.x + b.w && w.x + w.w > b.x && w.y < b.y + b.h && w.y + w.h > b.y) {
@@ -332,17 +319,14 @@ export class Player extends PhysicsBody {
       this.pogoJumping = false;
     }
 
-    // Jump Buffer
     if (input.actionPressed("jump")) {
       this.jumpBuffer = PLAYER_CONFIG.JUMP_BUFFER_FRAMES;
     } else if (this.jumpBuffer > 0) {
       this.jumpBuffer--;
     }
 
-    // Horizontal directional input
     const rawMove = (input.actionDown("right") ? 1 : 0) - (input.actionDown("left") ? 1 : 0);
 
-    // --- HOLLOW KNIGHT-STYLE SOUL FOCUS HEAL (Hold Skill on ground) vs ASTRAL WAVE (Tap Skill) ---
     const skillDown = input.actionDown("skill");
     const canStartFocus =
       this.hasSword &&
@@ -356,7 +340,7 @@ export class Player extends PhysicsBody {
       this.skillHoldTimer++;
 
       if (!this.skillConsumedThisHold && canStartFocus && this.skillHoldTimer >= PLAYER_CONFIG.FOCUS_HOLD_THRESHOLD) {
-        // Channeling Soul Focus: immobilized, glowing white, rising soul wisps
+
         this.focusTimer++;
         this.vx = 0;
 
@@ -367,7 +351,7 @@ export class Player extends PhysicsBody {
         if (this.focusTimer % 5 === 0) {
           const progressRatio = this.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES;
           this.game.sound.playFocusTick(progressRatio);
-          // Converging & rising white/cyan soul motes around the body
+
           const offsetX = (Math.random() - 0.5) * 18;
           const offsetY = (Math.random() - 0.5) * 14;
           this.game.particles.spawn(
@@ -383,7 +367,6 @@ export class Player extends PhysicsBody {
           );
         }
 
-        // Cancel focus if player jumps, dashes, attacks, or leaves ground
         if (input.actionPressed("jump") || input.actionPressed("dash") || input.actionPressed("attack") || !this.onGround) {
           this.focusTimer = 0;
           this.skillConsumedThisHold = true;
@@ -391,14 +374,14 @@ export class Player extends PhysicsBody {
           this.completeFocusHeal();
         }
       } else if (!this.skillConsumedThisHold && this.skillHoldTimer === 1 && !canStartFocus) {
-        // Instant Astral Wave if airborne or already at full HP (or enough for wave but not heal)
+
         if (this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST) {
           this.castAstralWave();
           this.skillConsumedThisHold = true;
         }
       }
     } else {
-      // Released Skill button: if it was a quick tap before Focus started, cast Astral Wave!
+
       if (
         this.hasSword &&
         !this.skillConsumedThisHold &&
@@ -419,7 +402,6 @@ export class Player extends PhysicsBody {
       this.facing = rawMove;
     }
 
-    // Dash Initiation
     if (!isFocusing && input.actionPressed("dash") && this.canDash && this.dashCooldown <= 0) {
       this.canDash = false;
       this.pogoJumping = false;
@@ -442,7 +424,6 @@ export class Player extends PhysicsBody {
       this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.playerNoDash, PALETTE.white, 10);
     }
 
-    // Dash kinematics vs Standard platforming & Wall Slide
     if (this.dashTimer > 0) {
       this.dashTimer--;
       this.vx = this.dashDirX * PLAYER_CONFIG.DASH_SPEED;
@@ -454,7 +435,7 @@ export class Player extends PhysicsBody {
         this.vx *= 0.5;
       }
     } else if (isFocusing) {
-      // Immobilized while channeling Soul Focus
+
       this.vx = 0;
       this.vy = Math.min(PLAYER_CONFIG.MAX_FALL_SPEED, this.vy + PLAYER_CONFIG.GRAVITY_FALL);
     } else {
@@ -478,7 +459,6 @@ export class Player extends PhysicsBody {
         }
       }
 
-      // Check wall-slide condition when airborne and pressing toward a solid wall
       this.wallSliding = false;
       this.wallDir = 0;
       if (!this.onGround && this.vy > 0 && rawMove !== 0) {
@@ -500,7 +480,6 @@ export class Player extends PhysicsBody {
         }
       }
 
-      // Grounded / Coyote Jump or Wall Jump execution
       if (this.jumpBuffer > 0) {
         if (this.coyoteTimer > 0) {
           this.vy = PLAYER_CONFIG.JUMP_FORCE;
@@ -553,12 +532,10 @@ export class Player extends PhysicsBody {
         }
       }
 
-      // Variable jump height cut
       if (!this.pogoJumping && !input.actionDown("jump") && this.vy < -1.0) {
         this.vy *= 0.54;
       }
 
-      // Gravity & Wall-Slide cap
       const isApex = !this.onGround && Math.abs(this.vy) < 0.65;
       const holdingLift = !this.onGround && this.vy < -0.5 && (input.actionDown("jump") || this.pogoJumping);
       const gravity = isApex
@@ -570,7 +547,6 @@ export class Player extends PhysicsBody {
       this.vy = Math.min(maxFall, this.vy + gravity);
     }
 
-    // 4-Directional Attack & 3-Hit Combo Initiation (Forehand -> Backhand -> Solar Finisher!)
     if (!isFocusing && this.hasSword && input.actionPressed("attack") && this.attackCooldown <= 0) {
       if (this.comboResetTimer > 0) {
         this.comboStep = (this.comboStep + 1) % 3;
@@ -595,7 +571,7 @@ export class Player extends PhysicsBody {
         if (rawMove !== 0) this.facing = rawMove;
         this.atkDirX = this.facing;
         this.atkDirY = 0;
-        // Subtle forward lunge on 3rd hit Solar Finisher
+
         if (this.comboStep === 2 && this.onGround) {
           this.vx = this.facing * 2.1;
           this.game.particles.spawnBurst(
@@ -609,7 +585,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Sub-pixel collision resolution (with upward corner correction enabled)
     this.moveX(this.vx, level, () => {
       this.vx = 0;
     });
@@ -625,19 +600,16 @@ export class Player extends PhysicsBody {
     this.updateScarf();
     this.updateWaves(level);
 
-    // Active multi-frame slash hitbox check
     if (this.attackTimer > 0) {
       this.checkActiveSlash(level);
       this.attackTimer--;
     }
 
-    // Bottom pit hazard
     if (this.y > level.rows * VIEWPORT.TILE + 8) {
       this.die();
       return;
     }
 
-    // Spike hazard check
     const pogoSavedFromSpikes =
       (this.pogoJumping || (this.swingDidRecoil && this.atkDirY === 1)) && this.vy < 0;
     if (!pogoSavedFromSpikes && level.collideSpike(this.x, this.y, this.w, this.h)) {
@@ -645,7 +617,6 @@ export class Player extends PhysicsBody {
       return;
     }
 
-    // Stage 2 Celestial Blade Shrine
     if (level.pedestal && !this.swordShrineClaimed) {
       const ped = level.pedestal;
       if (
@@ -666,7 +637,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Attunement Checkpoint Shrine interaction (restores HP and binds respawn point!)
     if (level.checkpoint) {
       const cp = level.checkpoint;
       if (
@@ -702,7 +672,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Starlight Relic pickups
     for (const r of level.relics) {
       if (!r.collected) {
         if (
@@ -730,7 +699,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Sanctuary Key pickups
     for (const k of level.keys) {
       if (!k.collected) {
         if (
@@ -757,7 +725,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Grand Gate proximity unlock
     for (const enemy of level.enemies) {
       if (!enemy.dead && enemy.isKeyGate && this.keysCollected >= 3) {
         if (
@@ -771,7 +738,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Enemy, Enemy Projectile & Boss contact damage (dash grants brief evasion i-frames)
     if (this.invulnTimer <= 0 && this.dashTimer <= 0) {
       for (const enemy of level.enemies) {
         if (!enemy.dead && !enemy.isDummy && enemy.knockbackTimer <= 0 && this.intersects(enemy)) {
@@ -825,7 +791,6 @@ export class Player extends PhysicsBody {
     for (const enemy of level.enemies) {
       if (enemy.dead) continue;
 
-      // Deflect enemy projectiles with blade slash!
       if (enemy.projectiles && enemy.projectiles.length > 0) {
         for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
           const proj = enemy.projectiles[i];
@@ -868,7 +833,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Check Boss & Boss Projectiles (Parry/Deflect!)
     if (level.boss && !level.boss.dead) {
       const b = level.boss;
       if (
@@ -905,7 +869,6 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Downward pogo bounce off spikes
     let pogoSpike = false;
     if (!this.swingDidRecoil && this.atkDirY === 1 && level.collideSpike(hb.x, hb.y, hb.w, hb.h)) {
       pogoSpike = true;

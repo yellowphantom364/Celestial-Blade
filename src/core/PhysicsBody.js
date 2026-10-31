@@ -1,9 +1,5 @@
 import { PLAYER_CONFIG } from "../config/constants.js";
 
-/**
- * Base AABB kinematic body with sub-pixel remainder accumulation
- * and upward ceiling corner-correction.
- */
 export class PhysicsBody {
   constructor(x, y, w, h) {
     this.x = x;
@@ -55,7 +51,7 @@ export class PhysicsBody {
           this.y += sign;
           move -= sign;
         } else {
-          // Upward jump corner correction: nudge horizontally if only clipping by a few pixels
+
           if (allowCornerCorrection && sign < 0) {
             let corrected = false;
             const maxNudge = PLAYER_CONFIG.CORNER_CORRECTION_PX;

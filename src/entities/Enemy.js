@@ -2,15 +2,6 @@ import { PLAYER_CONFIG, VIEWPORT } from "../config/constants.js";
 import { PALETTE } from "../config/palette.js";
 import { PhysicsBody } from "../core/PhysicsBody.js";
 
-/**
- * Hollow Knight-inspired enemy roster that actively fights back:
- *  - "patrol"  (Void Stalker): Patrols ledges, spots player, telegraphs a crouch, and lunges!
- *  - "charger" (Crimson Vanguard): Heavy shield knight; blocks frontal hits from afar and counter-thrusts!
- *  - "flyer"   (Astral Construct): Swoops and fires aimed astral bolts when player enters range!
- *  - "duelist" (Mantis Duelist): Agile blademaster with telegraphed dash-slashes and backstep evasions!
- *  - "mage"    (Sanctum Acolyte): Blinks/teleports across platforms and casts homing/aimed void orbs!
- *  - "gate" / "keygate": Destructible Runic Gates and 3-Key Grand Sanctum Gate.
- */
 export class Enemy extends PhysicsBody {
   constructor(x, y, type = "patrol", customHeight = null) {
     const isGate = type === "gate" || type === "keygate";
@@ -43,7 +34,6 @@ export class Enemy extends PhysicsBody {
     this.dead = false;
     this.animTick = Math.floor(Math.random() * 30);
 
-    // Combat AI State Machine ("PATROL", "WINDUP", "ATTACK", "COOLDOWN")
     this.aiState = "PATROL";
     this.aiTimer = 0;
     this.attackCooldown = 25 + Math.floor(Math.random() * 25);
@@ -119,7 +109,6 @@ export class Enemy extends PhysicsBody {
       return;
     }
 
-    // Crimson Vanguard shield block + counter-windup if struck from the front while patrolling!
     if (
       this.type === "charger" &&
       this.aiState === "PATROL" &&
@@ -171,7 +160,6 @@ export class Enemy extends PhysicsBody {
       }
       this.knockbackTimer = 10;
 
-      // Mantis Duelist swiftly recovers and prepares a counter-lunge after taking a hit!
       if (this.type === "duelist" && this.hp > 0 && this.aiState !== "ATTACK") {
         this.dir = Math.sign(game.player.x - this.x) || this.dir;
         this.aiState = "WINDUP";
@@ -222,7 +210,6 @@ export class Enemy extends PhysicsBody {
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
 
-    // 1. ASTRAL CONSTRUCT (Flying Striker that fires aimed bolts)
     if (this.isFlyer) {
       if (this.knockbackTimer > 0) {
         this.vx *= 0.85;
@@ -267,7 +254,6 @@ export class Enemy extends PhysicsBody {
 
     this.onGround = level.collideSolid(this.x, this.y + 1, this.w, this.h);
 
-    // 2. SANCTUM ACOLYTE ("mage" - teleports/blinks & fires twin void orbs)
     if (this.type === "mage") {
       this.dir = Math.sign(dx) || 1;
       if (this.knockbackTimer > 0) {
@@ -293,7 +279,7 @@ export class Enemy extends PhysicsBody {
         this.vx = 0;
         this.aiTimer--;
         if (this.aiTimer <= 0) {
-          // Blink/teleport away if player is close!
+
           if (absDx < 56) {
             const blinkOffsets = [-40, 40, -24, 24];
             for (const off of blinkOffsets) {
@@ -332,7 +318,6 @@ export class Enemy extends PhysicsBody {
       return;
     }
 
-    // 3. GROUNDED COMBATANTS ("patrol" Void Stalker, "charger" Crimson Vanguard, "duelist" Mantis Duelist)
     if (this.knockbackTimer > 0) {
       this.vx *= 0.82;
     } else if (this.aiState === "WINDUP") {
@@ -351,7 +336,7 @@ export class Enemy extends PhysicsBody {
           this.vx = this.dir * 2.85;
           player.game.sound.playDash();
         } else {
-          // Void Stalker hop-lunge
+
           this.aiTimer = 13;
           this.vx = this.dir * 2.35;
           this.vy = -1.5;
@@ -360,7 +345,7 @@ export class Enemy extends PhysicsBody {
       }
     } else if (this.aiState === "ATTACK") {
       this.aiTimer--;
-      // Stop lunge if about to run off a ledge into spikes/pit
+
       const lookAheadX = this.dir === 1 ? this.x + this.w + 2 : this.x - 3;
       const groundAhead = level.collideSolid(lookAheadX, this.y + this.h + 2, 2, 4);
       if (this.onGround && !groundAhead) {
@@ -380,7 +365,7 @@ export class Enemy extends PhysicsBody {
         this.aiState = "PATROL";
       }
     } else {
-      // PATROL & AGGRO DETECTION
+
       const detectRange = this.type === "duelist" ? 96 : this.type === "charger" ? 92 : 64;
       const strikeRange = this.type === "duelist" ? 58 : this.type === "charger" ? 52 : 42;
 
@@ -434,7 +419,6 @@ export class Enemy extends PhysicsBody {
   draw(ctx) {
     if (this.dead) return;
 
-    // Draw enemy projectiles
     for (const p of this.projectiles) {
       const px = Math.round(p.x);
       const py = Math.round(p.y);
@@ -484,7 +468,6 @@ export class Enemy extends PhysicsBody {
       return;
     }
 
-    // Telegraph exclamation / weapon glint when winding up an attack!
     if (this.aiState === "WINDUP") {
       ctx.fillStyle = this.animTick % 4 < 2 ? PALETTE.swordGlow : PALETTE.enemyEye;
       ctx.fillRect(rx + 4, ry - 6, 2, 3);
@@ -509,16 +492,16 @@ export class Enemy extends PhysicsBody {
 
     if (this.type === "mage") {
       const hover = Math.round(Math.sin(this.animTick * 0.14) * 1);
-      // Hooded Sanctum Acolyte robe
+
       ctx.fillStyle = "#2c224e";
       ctx.fillRect(rx + 1, ry + 2 + hover, this.w - 2, this.h - 2);
       ctx.fillStyle = PALETTE.enemyBody;
       ctx.fillRect(rx + 2, ry + hover, this.w - 4, 4);
-      // Glowing arcane eyes
+
       ctx.fillStyle = PALETTE.soulCyan;
       const eyeX = this.dir === 1 ? rx + 5 : rx + 2;
       ctx.fillRect(eyeX, ry + 2 + hover, 3, 2);
-      // Floating astral staff / casting orb
+
       const orbX = this.dir === 1 ? rx + this.w + 1 : rx - 3;
       ctx.fillStyle = this.aiState === "WINDUP" ? PALETTE.white : PALETTE.soulCyan;
       ctx.fillRect(orbX, ry + 3 + hover, 3, 3);
@@ -527,14 +510,14 @@ export class Enemy extends PhysicsBody {
 
     if (this.type === "duelist") {
       const crouch = this.aiState === "WINDUP" ? 2 : 0;
-      // Mantis Duelist sleek armored silhouette + twin scythe blades
+
       ctx.fillStyle = "#1e272e";
       ctx.fillRect(rx + 2, ry + this.h - 3, 2, 3);
       ctx.fillRect(rx + this.w - 4, ry + this.h - 3, 2, 3);
 
       ctx.fillStyle = "#20bf6b";
       ctx.fillRect(rx + 1, ry + 2 + crouch, this.w - 2, this.h - 5 - crouch);
-      // Mantis horned mask
+
       ctx.fillStyle = PALETTE.white;
       ctx.fillRect(rx + 2, ry + crouch, this.w - 4, 3);
       ctx.fillRect(rx + 1, ry - 2 + crouch, 2, 2);
@@ -543,7 +526,6 @@ export class Enemy extends PhysicsBody {
       const eyeX = this.dir === 1 ? rx + 5 : rx + 2;
       ctx.fillRect(eyeX, ry + 1 + crouch, 2, 2);
 
-      // Scythe blade slash visual during ATTACK or held ready
       ctx.fillStyle = this.aiState === "ATTACK" ? PALETTE.white : PALETTE.relicCyan;
       const bladeX = this.dir === 1 ? rx + this.w : rx - 4;
       const bladeW = this.aiState === "ATTACK" ? 7 : 3;
@@ -559,29 +541,24 @@ export class Enemy extends PhysicsBody {
     const bounce = this.aiState === "WINDUP" ? 1 : Math.sin(this.animTick * 0.22) > 0.3 ? 1 : 0;
     const isCharger = this.type === "charger";
 
-    // Animated legs
     ctx.fillStyle = "#1e272e";
     const step = Math.floor(this.animTick / 5) % 2;
     ctx.fillRect(rx + 1 + step, ry + this.h - 2, 2, 2);
     ctx.fillRect(rx + this.w - 3 - step, ry + this.h - 2, 2, 2);
 
-    // Armored body
     ctx.fillStyle = isCharger ? PALETTE.enemyCharger : PALETTE.enemyBody;
     ctx.fillRect(rx, ry + bounce, this.w, this.h - 2 - bounce);
 
-    // Horns / Crown
     ctx.fillStyle = isCharger ? PALETTE.swordGlow : PALETTE.enemyEye;
     ctx.fillRect(rx + 1, ry - 2 + bounce, 2, 2);
     ctx.fillRect(rx + this.w - 3, ry - 2 + bounce, 2, 2);
 
-    // Visor & Eye
     ctx.fillStyle = PALETTE.white;
     const eyeOffset = this.dir === 1 ? 5 : 1;
     ctx.fillRect(rx + eyeOffset, ry + 3 + bounce, 4, 2);
     ctx.fillStyle = PALETTE.enemyEye;
     ctx.fillRect(rx + eyeOffset + (this.dir === 1 ? 2 : 0), ry + 3 + bounce, 2, 2);
 
-    // Crimson Vanguard heavy front shield & lance
     if (isCharger) {
       const shieldX = this.dir === 1 ? rx + this.w - 1 : rx - 2;
       ctx.fillStyle = PALETTE.swordGlow;

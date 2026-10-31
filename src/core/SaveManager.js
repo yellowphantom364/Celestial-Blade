@@ -14,9 +14,6 @@ const DEFAULT_SAVE = {
   crtEnabled: false
 };
 
-/**
- * Manages persistent player progress, attuned shrines, and preferences in localStorage.
- */
 export class SaveManager {
   constructor() {
     this.data = this.load();
@@ -48,7 +45,7 @@ export class SaveManager {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
     } catch {
-      // Ignore storage quota or private browsing restrictions
+
     }
   }
 

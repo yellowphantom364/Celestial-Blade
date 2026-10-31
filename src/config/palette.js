@@ -1,7 +1,3 @@
-/**
- * Color palette and biome atmospheric definitions.
- */
-
 export const PALETTE = Object.freeze({
   bgDeep: "#0d1021",
   bgMid: "#171c36",

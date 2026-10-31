@@ -1,30 +1,3 @@
-/**
- * Stage definitions for Chapters I through XII, including:
- *  - Stage I (Silent Precipice) with Awakening Attunement Shrine
- *  - Stage V (Crimson Bastion) expanded 80x36 scrolling fortress with Citadel Attunement Shrine
- *  - Stage VII (Mantis Cloister) featuring Mantis Duelists
- *  - Stage IX (Astral Observatory) featuring Sanctum Acolytes
- *  - Stage XI (The Grand Labyrinth) 120x60 non-linear fortress with Sanctum Nexus Shrine
- *  - Stage XII (Eclipse Sanctum) Final Boss Arena against Seraph Vael
- *
- * Tile Legend:
- *  # = Solid stone / runic architecture
- *  ^ = Lethal crystal spikes (can be pogo-slashed)
- *  P = Player spawn coordinate
- *  S = Celestial Blade Shrine (Stage 2)
- *  K = Attunement Checkpoint Shrine (Stages 1, 5, and 11)
- *  Q = Sanctum Key (Stage 11)
- *  R = Hidden Starlight Relic (3 Relics upgrades Max Hearts to 4)
- *  G = Destructible Runic Barrier Gate
- *  L = 3-Key Grand Sanctum Gate
- *  E = Void Stalker (Aggressive Lunge Patrol Enemy)
- *  C = Crimson Vanguard (Shield-Counter Charger Enemy)
- *  F = Astral Construct (Aimed Bolt Flying Enemy)
- *  D = Mantis Duelist (Fast Scythe Lunge & Counter Duelist)
- *  M = Sanctum Acolyte (Teleporting Void-Orb Mage)
- *  B = Seraph Vael, Warden of the Eclipse (Stage 12 Boss)
- */
-
 function buildStage5CrimsonBastion() {
   const cols = 80;
   const rows = 36;
@@ -38,47 +11,38 @@ function buildStage5CrimsonBastion() {
     }
   };
 
-  // Outer bastion walls & floor
   fillRect(0, 0, rows - 1, cols - 1, "#");
   fillRect(2, 2, rows - 5, cols - 3, ".");
 
-  // Right exit corridor (rows 22..25 on right border)
   fillRect(22, cols - 3, 25, cols - 1, ".");
   fillRect(26, 66, 31, cols - 1, "#");
 
-  // Entry Courtyard (Left Wing, cols 2..24)
   fillRect(28, 2, 31, 14, "#");
   g[27][5] = "P";
   g[27][11] = "E";
 
-  // Spike moat & stepping battlements
   fillRect(31, 15, 31, 25, "^");
   fillRect(26, 17, 27, 22, "#");
   g[25][19] = "C";
 
-  // Lower Dungeon & Central Ascent (cols 26..44)
   fillRect(28, 26, 31, 38, "#");
   g[27][31] = "D";
   fillRect(22, 28, 23, 35, "#");
   fillRect(17, 22, 18, 27, "#");
   g[16][24] = "F";
 
-  // Upper West Alcove -> Hidden Starlight Relic #2
   fillRect(12, 6, 13, 18, "#");
   fillRect(13, 19, 13, 22, "^");
   g[11][14] = "C";
   g[11][8] = "R";
 
-  // Central Citadel Keep & Attunement Shrine (cols 36..52, rows 15..20)
   fillRect(18, 36, 20, 52, "#");
-  g[17][43] = "K"; // Mid-fortress Attunement Shrine!
+  g[17][43] = "K";
 
-  // High Battlements & Guard Tower (cols 48..76)
   fillRect(12, 48, 13, 60, "#");
   g[11][54] = "D";
   g[10][63] = "F";
 
-  // Lower East Gauntlet leading to the Sealed Bastion Gate
   fillRect(31, 39, 31, 65, "^");
   fillRect(26, 44, 27, 51, "#");
   g[25][48] = "C";
@@ -87,7 +51,6 @@ function buildStage5CrimsonBastion() {
   g[25][60] = "D";
   g[20][59] = "F";
 
-  // Sealed Runic Gate guarding the Bastion Exit
   fillRect(18, 66, 21, 79, "#");
   for (let r = 22; r <= 25; r++) {
     g[r][72] = "G";
@@ -117,30 +80,24 @@ function buildStage11Labyrinth() {
     }
   };
 
-  // Outer fortress perimeter
   fillRect(0, 0, rows - 1, cols - 1, "#");
   fillRect(2, 2, rows - 4, cols - 3, ".");
 
-  // Horizontal sector dividers
   fillRect(19, 2, 20, cols - 3, "#");
   fillRect(39, 2, 40, cols - 3, "#");
 
-  // Vertical connecting shafts
   fillRect(18, 28, 41, 35, ".");
   fillRect(18, 76, 41, 83, ".");
 
-  // Central Hub (Rows 21..38)
   fillRect(35, 2, 38, 27, "#");
   g[34][6] = "P";
-  g[34][15] = "K"; // Grand Labyrinth Attunement Shrine
+  g[34][15] = "K";
 
-  // Left Shaft stepping ledges
   fillRect(35, 30, 35, 33, "#");
   fillRect(30, 28, 30, 31, "#");
   fillRect(25, 32, 25, 35, "#");
   fillRect(20, 29, 20, 32, "#");
 
-  // Central bridge between shafts
   fillRect(35, 36, 38, 75, "#");
   fillRect(36, 44, 38, 50, ".");
   fillRect(38, 44, 38, 50, "^");
@@ -153,13 +110,11 @@ function buildStage11Labyrinth() {
   g[34][53] = "D";
   g[34][71] = "C";
 
-  // Right-Center Shaft stepping ledges
   fillRect(35, 78, 35, 81, "#");
   fillRect(30, 76, 30, 79, "#");
   fillRect(25, 80, 25, 83, "#");
   fillRect(20, 77, 20, 80, "#");
 
-  // Grand Sanctum Corridor leading to Stage 12 Boss Arena
   fillRect(21, 84, 30, 119, "#");
   fillRect(35, 84, 38, 119, "#");
   fillRect(31, 84, 34, 119, ".");
@@ -167,7 +122,6 @@ function buildStage11Labyrinth() {
     g[r][96] = "L";
   }
 
-  // Top-Left Wing -> Key #1
   fillRect(15, 18, 15, 25, "#");
   fillRect(12, 10, 12, 15, "#");
   fillRect(9, 3, 9, 8, "#");
@@ -176,7 +130,6 @@ function buildStage11Labyrinth() {
   g[11][12] = "M";
   g[10][21] = "F";
 
-  // Top-Right Wing -> Key #2
   fillRect(15, 38, 18, 45, "#");
   fillRect(15, 52, 18, 58, "#");
   fillRect(18, 46, 18, 51, "^");
@@ -194,7 +147,6 @@ function buildStage11Labyrinth() {
   fillRect(11, 107, 18, 116, "#");
   g[10][112] = "Q";
 
-  // Lower Labyrinth -> Key #3 + Hidden Relic #5
   fillRect(45, 29, 45, 33, "#");
   fillRect(50, 28, 50, 32, "#");
   fillRect(55, 20, 58, 38, "#");
@@ -232,7 +184,7 @@ function buildStage11Labyrinth() {
 }
 
 export const STAGES = [
-  // STAGE 1 (CH. I): SILENT PRECIPICE (Movement, Jump, Dash & First Attunement Shrine)
+
   {
     exitY: 124,
     prompts: [
@@ -267,7 +219,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 2 (CH. II): CELESTIAL SHRINE (Unlock Astral Blade & 3-Hit Combo)
   {
     exitY: 108,
     prompts: [
@@ -301,7 +252,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 3 (CH. III): FIRST BLOOD (Patrol Stalkers, Hold-to-Focus Heal & Relic #1)
   {
     exitY: 108,
     prompts: [
@@ -334,7 +284,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 4 (CH. IV): WINDWARD CHASM (Down-Slash Pogo Across Chasms & Flyers)
   {
     exitY: 100,
     prompts: [{ x: 64, y: 54, text: "[DOWN+X] POGO REFRESHES DASH" }],
@@ -365,10 +314,8 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 5 (CH. V): CRIMSON BASTION (Expanded 80x36 Citadel + Keep Attunement Shrine + Relic #2)
   buildStage5CrimsonBastion(),
 
-  // STAGE 6 (CH. VI): SHATTERED ARCHES (Aerial Flyers, Pogo Chains & Relic #3)
   {
     exitY: 84,
     prompts: [],
@@ -399,7 +346,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 7 (CH. VII): MANTIS CLOISTER (New Stage - Agile Mantis Duelists!)
   {
     exitY: 100,
     prompts: [{ x: 36, y: 56, text: "BEWARE THE MANTIS DUELISTS" }],
@@ -430,7 +376,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 8 (CH. VIII): TWIN CONDUITS (Dual Crimson Chargers & Sealed Gate)
   {
     exitY: 100,
     prompts: [],
@@ -461,7 +406,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 9 (CH. IX): ASTRAL OBSERVATORY (New Stage - Teleporting Sanctum Acolytes!)
   {
     exitY: 92,
     prompts: [{ x: 40, y: 44, text: "SLASH ENEMY ORBS TO PARRY & GAIN SOUL" }],
@@ -492,7 +436,6 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 10 (CH. X): SANCTUM THRESHOLD (Gauntlet & Relic #4)
   {
     exitY: 92,
     prompts: [],
@@ -523,10 +466,8 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 11 (CH. XI): THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania + Shrine)
   buildStage11Labyrinth(),
 
-  // STAGE 12 (CH. XII): ECLIPSE SANCTUM (Final Boss Arena - Seraph Vael)
   {
     exitY: 108,
     prompts: [{ x: 96, y: 38, text: "VANQUISH SERAPH VAEL" }],

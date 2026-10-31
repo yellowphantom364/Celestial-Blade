@@ -1,14 +1,6 @@
-/**
- * Celestial Blade - Compiled Standalone Bundle
- * Auto-generated from src/ ES6 modules via `npm run build`.
- */
 (() => {
   "use strict";
 
-  // --- Module: src/config/constants.js ---
-  /**
-   * Core display, physics, and gameplay tuning constants.
-   */
   const VIEWPORT = Object.freeze({
     WIDTH: 320,
     HEIGHT: 180,
@@ -175,10 +167,6 @@
     }
   ]);
 
-  // --- Module: src/config/palette.js ---
-  /**
-   * Color palette and biome atmospheric definitions.
-   */
   const PALETTE = Object.freeze({
     bgDeep: "#0d1021",
     bgMid: "#171c36",
@@ -268,10 +256,6 @@
     }
   });
 
-  // --- Module: src/graphics/PixelFont.js ---
-  /**
-   * 5-row crisp bitmap pixel font with text measurement and alignment helpers.
-   */
   const PIXEL_FONT = Object.freeze({
     A: ["010", "101", "111", "101", "101"],
     B: ["110", "101", "110", "101", "110"],
@@ -393,7 +377,6 @@
     drawPixelText(ctx, text, Math.round(centerX - w / 2), y, color, shadowColor, scale);
   }
 
-  // --- Module: src/core/SaveManager.js ---
   const STORAGE_KEY = "celestial_blade_save_v2";
   
   const DEFAULT_SAVE = {
@@ -409,10 +392,6 @@
     muted: false,
     crtEnabled: false
   };
-  
-  /**
-   * Manages persistent player progress, attuned shrines, and preferences in localStorage.
-   */
   class SaveManager {
     constructor() {
       this.data = this.load();
@@ -444,7 +423,7 @@
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
       } catch {
-        // Ignore storage quota or private browsing restrictions
+  
       }
     }
   
@@ -516,12 +495,6 @@
     }
   }
 
-  // --- Module: src/core/InputManager.js ---
-  /**
-   * Unified input controller supporting dual keyboard layouts
-   * (Arrow keys + Z/X/C/V and WASD + Space/J/K/L) plus HTML5 Gamepad polling.
-   */
-  
   const ACTION_BINDINGS = Object.freeze({
     left: ["ArrowLeft", "KeyA"],
     right: ["ArrowRight", "KeyD"],
@@ -662,10 +635,6 @@
     }
   }
 
-  // --- Module: src/core/Camera.js ---
-  /**
-   * Smooth viewport camera with directional lookahead and multi-axis trauma shake.
-   */
   class Camera {
     constructor() {
       this.x = 0;
@@ -737,11 +706,6 @@
     }
   }
 
-  // --- Module: src/core/PhysicsBody.js ---
-  /**
-   * Base AABB kinematic body with sub-pixel remainder accumulation
-   * and upward ceiling corner-correction.
-   */
   class PhysicsBody {
     constructor(x, y, w, h) {
       this.x = x;
@@ -793,7 +757,7 @@
             this.y += sign;
             move -= sign;
           } else {
-            // Upward jump corner correction: nudge horizontally if only clipping by a few pixels
+  
             if (allowCornerCorrection && sign < 0) {
               let corrected = false;
               const maxNudge = PLAYER_CONFIG.CORNER_CORRECTION_PX;
@@ -823,7 +787,6 @@
     }
   }
 
-  // --- Module: src/core/ParticleSystem.js ---
   const MINI_HEART = [
     "0110110",
     "1111111",
@@ -832,10 +795,6 @@
     "0011100",
     "0001000"
   ];
-  
-  /**
-   * Particle emitter, dash afterimage trail, flying HUD heal hearts, and floating combat text system.
-   */
   class ParticleSystem {
     constructor() {
       this.particles = [];
@@ -981,7 +940,7 @@
         const fh = this.flyingHearts[i];
         fh.progress++;
         const t = Math.min(1, fh.progress / fh.duration);
-        // Ease-in-out cubic curve along quadratic bezier
+  
         const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         const inv = 1 - ease;
         fh.x = inv * inv * fh.startX + 2 * inv * ease * fh.ctrlX + ease * ease * fh.targetX;
@@ -1055,7 +1014,7 @@
   
         const hx = Math.round(fh.x);
         const hy = Math.round(fh.y);
-        // Outer white/cyan glow around flying heart
+  
         ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
         ctx.fillRect(hx - 1, hy - 1, 9, 8);
         for (let r = 0; r < MINI_HEART.length; r++) {
@@ -1070,13 +1029,6 @@
     }
   }
 
-  // --- Module: src/audio/SoundEngine.js ---
-  /**
-   * Procedural Web Audio synthesizer featuring multi-layered dark-synth / chiptune
-   * "tuff beats" (punchy 808/kick drums, crispy snare, 16th-note hi-hats, sub-basslines,
-   * chord pads, and arpeggiated leads) plus combat & Soul Focus SFX.
-   */
-  
   const TRACKS = Object.freeze({
     exploration: {
       stepDuration: 0.145,
@@ -1211,7 +1163,7 @@
     triggerDrum(type, now) {
       if (!this.ctx || !this.masterGain) return;
       if (type === "K") {
-        // Punchy 808 / Synth Kick Drum
+  
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = "sine";
@@ -1224,7 +1176,7 @@
         osc.start(now);
         osc.stop(now + 0.12);
       } else if (type === "S") {
-        // Crispy Synth Snare (body + filtered noise snap)
+  
         const osc = this.ctx.createOscillator();
         const oGain = this.ctx.createGain();
         osc.type = "triangle";
@@ -1253,7 +1205,7 @@
           noise.stop(now + 0.09);
         }
       } else if (type === "H" && this.noiseBuffer) {
-        // Crisp 16th-note Hi-Hat
+  
         const noise = this.ctx.createBufferSource();
         noise.buffer = this.noiseBuffer;
         const filter = this.ctx.createBiquadFilter();
@@ -1288,13 +1240,11 @@
         const now = this.ctx.currentTime;
         const step = this.musicStep++;
   
-        // 1. Percussion groove (Kick, Snare, Hats)
         const drumHit = activeTrack.drums[step % activeTrack.drums.length];
         if (drumHit) {
           this.triggerDrum(drumHit, now);
         }
   
-        // 2. Driving filtered sub-bassline on 8th notes
         if (step % 2 === 0) {
           const bassFreq = activeTrack.bass[Math.floor(step / 2) % activeTrack.bass.length];
           if (bassFreq) {
@@ -1316,7 +1266,6 @@
           }
         }
   
-        // 3. Arpeggiated synth lead + detuned shimmer
         const leadFreq = activeTrack.melody[step % activeTrack.melody.length];
         if (leadFreq && leadFreq > 0) {
           const osc = this.ctx.createOscillator();
@@ -1453,7 +1402,6 @@
       noise.start(now);
       noise.stop(now + 0.08);
   
-      // Extra metallic resonance on 3rd-hit Solar Finisher
       if (comboStep === 2) {
         const osc = this.ctx.createOscillator();
         const oGain = this.ctx.createGain();
@@ -1739,11 +1687,6 @@
     }
   }
 
-  // --- Module: src/graphics/BackgroundRenderer.js ---
-  /**
-   * Multi-layer parallax background renderer with biome palettes,
-   * crisp circular pixel sun/moon/eclipse, stepped peaks, ruined pillars, and drifting motes.
-   */
   class BackgroundRenderer {
     constructor() {
       this.stars = Array.from({ length: 48 }, () => ({
@@ -1804,12 +1747,11 @@
       const my = 34;
       const pulse = Math.sin(this.tick * 0.05) * 1.2;
   
-      // Multi-layered soft circular halo
       this.drawPixelCircle(ctx, mx, my, Math.round(23 + pulse), theme.moonGlow);
       this.drawPixelCircle(ctx, mx, my, Math.round(17 + pulse * 0.5), theme.moonGlow);
   
       if (biome === "eclipse") {
-        // Total Solar Eclipse: Blazing crimson/gold corona + solar flares + pitch-black umbral core
+  
         for (let i = 0; i < 8; i++) {
           const angle = (Math.PI * 2 * i) / 8 + this.tick * 0.01;
           const rayLen = (i % 2 === 0 ? 18 : 15) + Math.sin(this.tick * 0.08 + i) * 2;
@@ -1823,17 +1765,17 @@
         this.drawPixelCircle(ctx, mx, my, 10, PALETTE.white);
         this.drawPixelCircle(ctx, mx, my, 8, "#08040b");
       } else if (biome === "spire") {
-        // Astral Golden Sun / Amber Full Moon with solar crown & warm surface craters
+  
         this.drawPixelCircle(ctx, mx, my, 12, "rgba(254, 211, 48, 0.35)");
         this.drawPixelCircle(ctx, mx, my, 10, PALETTE.swordGlow);
         this.drawPixelCircle(ctx, mx - 1, my - 1, 8, PALETTE.white);
-        // Subtle solar surface texture
+  
         ctx.fillStyle = PALETTE.swordCombo;
         ctx.fillRect(mx + 2, my + 2, 3, 2);
         ctx.fillRect(mx - 4, my + 3, 2, 2);
         ctx.fillRect(mx + 3, my - 3, 2, 2);
       } else {
-        // Per-pixel Crescent Moon with Earthshine (no square cutout!)
+  
         const r = 10;
         const shadowOffsetX = 4.2;
         const shadowOffsetY = -2.2;
@@ -1849,11 +1791,11 @@
             const inShadow = sdx * sdx + sdy * sdy <= shadowR * shadowR;
   
             if (inShadow) {
-              // Subtle dark earthshine on the unlit lunar hemisphere
+  
               ctx.fillStyle = biome === "labyrinth" ? "#16233b" : "#1c2442";
               ctx.fillRect(mx + dx, my + dy, 1, 1);
             } else {
-              // Lit crescent surface with subtle crater shading
+  
               const isCrater =
                 (dx === -4 && (dy === 1 || dy === 2)) ||
                 (dx === -3 && dy === 2) ||
@@ -1888,13 +1830,11 @@
       const theme = this.getTheme(levelIndex);
       const meta = STAGE_METADATA[levelIndex] || STAGE_METADATA[0];
   
-      // Multi-band atmospheric sky gradient
       ctx.fillStyle = theme.skyTop;
       ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
       ctx.fillStyle = theme.skyBottom;
       ctx.fillRect(0, Math.floor(VIEWPORT.HEIGHT * 0.45), VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
   
-      // Stars (skip drawing inside the celestial disc radius so stars never clip through the moon)
       const mx = 250;
       const my = 34;
       for (const s of this.stars) {
@@ -1906,10 +1846,8 @@
         ctx.fillRect(s.x, s.y, s.size, s.size);
       }
   
-      // Crisp Celestial Body (Crescent Moon, Solar Crown, or Total Eclipse)
       this.drawCelestialBody(ctx, theme, meta.biome);
   
-      // Far mountain range
       const parallax1 = Math.floor((cameraX * 0.08 + levelIndex * 20) / 2) * 2;
       for (let i = -1; i < 6; i++) {
         const peakX = i * 72 - (parallax1 % 72);
@@ -1917,7 +1855,6 @@
         this.drawSteppedPeak(ctx, peakX, peakY, 36, 4, theme.farPeak);
       }
   
-      // Mid mountain range
       const parallax2 = Math.floor((cameraX * 0.16 + levelIndex * 40) / 2) * 2;
       for (let i = -1; i < 8; i++) {
         const peakX = i * 52 - (parallax2 % 52);
@@ -1925,7 +1862,6 @@
         this.drawSteppedPeak(ctx, peakX, peakY, 26, 2, theme.midPeak);
       }
   
-      // Ancient background pillars
       this.drawRuinedPillars(ctx, cameraX, levelIndex, theme.pillarColor);
     }
   
@@ -1938,19 +1874,13 @@
     }
   }
 
-  // --- Module: src/graphics/SpriteRenderer.js ---
-  /**
-   * Procedural pixel-art sprite and animation renderer for the player,
-   * flowing scarf trail, 3-hit combo slash arcs, Soul Focus silhouette, and astral projectiles.
-   */
   class SpriteRenderer {
     static drawPlayer(ctx, player) {
-      // Always render active sword slash arc even on invulnerability blink frames
+  
       if (player.attackTimer > 0) {
         SpriteRenderer.drawSlashArc(ctx, player);
       }
   
-      // Render active Astral Wave projectiles
       for (const wave of player.waves) {
         SpriteRenderer.drawAstralWave(ctx, wave);
       }
@@ -1964,7 +1894,6 @@
         player.focusFlashTimer > 0 ||
         (isFocusing && (player.focusTimer > 12 || player.focusTimer % 4 < 3));
   
-      // Draw simulated flowing scarf trail behind player
       const scarfColor = isWhiteSilhouette
         ? PALETTE.white
         : player.canDash
@@ -1986,7 +1915,6 @@
       const dx = Math.round(cx - dw / 2);
       const dy = Math.round(by - dh);
   
-      // Soul Focus glowing aura & levitation ring (Hollow Knight style!)
       if (isFocusing) {
         const ratio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
         const ringRadius = Math.max(3, Math.round((1 - ratio) * 14));
@@ -1998,32 +1926,29 @@
         ctx.fillRect(cx - 1, dy + 4 - ringRadius, 2, 2);
         ctx.fillRect(cx - 1, Math.min(by, dy + 4 + ringRadius), 2, 2);
   
-        // Rising vertical soul beam pillars
         const pillarH = Math.round(ratio * (dh + 6));
         ctx.fillStyle = player.focusTimer % 4 < 2 ? PALETTE.white : PALETTE.soulCyan;
         ctx.fillRect(dx - 2, by - pillarH, 1, pillarH);
         ctx.fillRect(dx + dw + 1, by - pillarH, 1, pillarH);
       }
   
-      // Subtle idle breathing offset
       const isMoving = Math.abs(player.vx) > 0.2;
       const breathOffset =
         player.onGround && !isMoving && Math.sin(player.animTick * 0.12) > 0.5 ? 1 : 0;
   
       if (isWhiteSilhouette) {
-        // Pure luminous white Soul Focus vessel silhouette
+  
         ctx.fillStyle = PALETTE.soulCyan;
         ctx.fillRect(dx - 1, dy - 1 + breathOffset, dw + 2, dh + 1 - breathOffset);
         ctx.fillStyle = PALETTE.white;
         ctx.fillRect(dx, dy + breathOffset, dw, dh - breathOffset);
-        // Glowing cyan focus eyes
+  
         ctx.fillStyle = PALETTE.soulCyan;
         const eyeX = player.facing === 1 ? dx + dw - 2 : dx;
         ctx.fillRect(eyeX, dy + 2 + breathOffset, 2, 2);
         return;
       }
   
-      // Legs / Animated Run Cycle
       ctx.fillStyle = PALETTE.playerCloakDark;
       if (!player.onGround) {
         ctx.fillRect(dx + 1, by - 2, dw - 2, 2);
@@ -2041,25 +1966,20 @@
         ctx.fillRect(dx + dw - 3, by - 2, 2, 2);
       }
   
-      // Cloak / Torso
       ctx.fillStyle = PALETTE.playerCloak;
       ctx.fillRect(dx, dy + 3 + breathOffset, dw, Math.max(2, dh - 4 - breathOffset));
   
-      // Shoulder / Scarf Collar highlight
       ctx.fillStyle = scarfColor;
       ctx.fillRect(dx, dy + 3 + breathOffset, dw, 1);
   
-      // Head & Hair
       ctx.fillStyle = scarfColor;
       ctx.fillRect(dx, dy + breathOffset, dw, 3);
       ctx.fillRect(dx - player.facing * 1, dy + 1 + breathOffset, 1, 2);
   
-      // Face / Visor Eye
       ctx.fillStyle = PALETTE.playerBody;
       const eyeX = player.facing === 1 ? dx + dw - 2 : dx;
       ctx.fillRect(eyeX, dy + 1 + breathOffset, 2, 2);
   
-      // Sheathed Celestial Blade on back when unlocked and not swinging
       if (player.hasSword && player.attackTimer <= 0) {
         ctx.fillStyle = player.comboResetTimer > 0 && player.comboStep === 1 ? PALETTE.swordCombo : PALETTE.swordGlow;
         const sx = player.facing === 1 ? dx - 2 : dx + dw;
@@ -2068,7 +1988,6 @@
         ctx.fillRect(sx, dy + 1 + breathOffset, 1, 2);
       }
   
-      // 3-Hit Combo Step Pips above player when chaining strikes
       if (player.comboResetTimer > 0 && player.hasSword) {
         for (let i = 0; i < 3; i++) {
           const pipX = cx - 5 + i * 4;
@@ -2158,16 +2077,6 @@
     }
   }
 
-  // --- Module: src/entities/Enemy.js ---
-  /**
-   * Hollow Knight-inspired enemy roster that actively fights back:
-   *  - "patrol"  (Void Stalker): Patrols ledges, spots player, telegraphs a crouch, and lunges!
-   *  - "charger" (Crimson Vanguard): Heavy shield knight; blocks frontal hits from afar and counter-thrusts!
-   *  - "flyer"   (Astral Construct): Swoops and fires aimed astral bolts when player enters range!
-   *  - "duelist" (Mantis Duelist): Agile blademaster with telegraphed dash-slashes and backstep evasions!
-   *  - "mage"    (Sanctum Acolyte): Blinks/teleports across platforms and casts homing/aimed void orbs!
-   *  - "gate" / "keygate": Destructible Runic Gates and 3-Key Grand Sanctum Gate.
-   */
   class Enemy extends PhysicsBody {
     constructor(x, y, type = "patrol", customHeight = null) {
       const isGate = type === "gate" || type === "keygate";
@@ -2200,7 +2109,6 @@
       this.dead = false;
       this.animTick = Math.floor(Math.random() * 30);
   
-      // Combat AI State Machine ("PATROL", "WINDUP", "ATTACK", "COOLDOWN")
       this.aiState = "PATROL";
       this.aiTimer = 0;
       this.attackCooldown = 25 + Math.floor(Math.random() * 25);
@@ -2276,7 +2184,6 @@
         return;
       }
   
-      // Crimson Vanguard shield block + counter-windup if struck from the front while patrolling!
       if (
         this.type === "charger" &&
         this.aiState === "PATROL" &&
@@ -2328,7 +2235,6 @@
         }
         this.knockbackTimer = 10;
   
-        // Mantis Duelist swiftly recovers and prepares a counter-lunge after taking a hit!
         if (this.type === "duelist" && this.hp > 0 && this.aiState !== "ATTACK") {
           this.dir = Math.sign(game.player.x - this.x) || this.dir;
           this.aiState = "WINDUP";
@@ -2379,7 +2285,6 @@
       const absDx = Math.abs(dx);
       const absDy = Math.abs(dy);
   
-      // 1. ASTRAL CONSTRUCT (Flying Striker that fires aimed bolts)
       if (this.isFlyer) {
         if (this.knockbackTimer > 0) {
           this.vx *= 0.85;
@@ -2424,7 +2329,6 @@
   
       this.onGround = level.collideSolid(this.x, this.y + 1, this.w, this.h);
   
-      // 2. SANCTUM ACOLYTE ("mage" - teleports/blinks & fires twin void orbs)
       if (this.type === "mage") {
         this.dir = Math.sign(dx) || 1;
         if (this.knockbackTimer > 0) {
@@ -2450,7 +2354,7 @@
           this.vx = 0;
           this.aiTimer--;
           if (this.aiTimer <= 0) {
-            // Blink/teleport away if player is close!
+  
             if (absDx < 56) {
               const blinkOffsets = [-40, 40, -24, 24];
               for (const off of blinkOffsets) {
@@ -2489,7 +2393,6 @@
         return;
       }
   
-      // 3. GROUNDED COMBATANTS ("patrol" Void Stalker, "charger" Crimson Vanguard, "duelist" Mantis Duelist)
       if (this.knockbackTimer > 0) {
         this.vx *= 0.82;
       } else if (this.aiState === "WINDUP") {
@@ -2508,7 +2411,7 @@
             this.vx = this.dir * 2.85;
             player.game.sound.playDash();
           } else {
-            // Void Stalker hop-lunge
+  
             this.aiTimer = 13;
             this.vx = this.dir * 2.35;
             this.vy = -1.5;
@@ -2517,7 +2420,7 @@
         }
       } else if (this.aiState === "ATTACK") {
         this.aiTimer--;
-        // Stop lunge if about to run off a ledge into spikes/pit
+  
         const lookAheadX = this.dir === 1 ? this.x + this.w + 2 : this.x - 3;
         const groundAhead = level.collideSolid(lookAheadX, this.y + this.h + 2, 2, 4);
         if (this.onGround && !groundAhead) {
@@ -2537,7 +2440,7 @@
           this.aiState = "PATROL";
         }
       } else {
-        // PATROL & AGGRO DETECTION
+  
         const detectRange = this.type === "duelist" ? 96 : this.type === "charger" ? 92 : 64;
         const strikeRange = this.type === "duelist" ? 58 : this.type === "charger" ? 52 : 42;
   
@@ -2591,7 +2494,6 @@
     draw(ctx) {
       if (this.dead) return;
   
-      // Draw enemy projectiles
       for (const p of this.projectiles) {
         const px = Math.round(p.x);
         const py = Math.round(p.y);
@@ -2641,7 +2543,6 @@
         return;
       }
   
-      // Telegraph exclamation / weapon glint when winding up an attack!
       if (this.aiState === "WINDUP") {
         ctx.fillStyle = this.animTick % 4 < 2 ? PALETTE.swordGlow : PALETTE.enemyEye;
         ctx.fillRect(rx + 4, ry - 6, 2, 3);
@@ -2666,16 +2567,16 @@
   
       if (this.type === "mage") {
         const hover = Math.round(Math.sin(this.animTick * 0.14) * 1);
-        // Hooded Sanctum Acolyte robe
+  
         ctx.fillStyle = "#2c224e";
         ctx.fillRect(rx + 1, ry + 2 + hover, this.w - 2, this.h - 2);
         ctx.fillStyle = PALETTE.enemyBody;
         ctx.fillRect(rx + 2, ry + hover, this.w - 4, 4);
-        // Glowing arcane eyes
+  
         ctx.fillStyle = PALETTE.soulCyan;
         const eyeX = this.dir === 1 ? rx + 5 : rx + 2;
         ctx.fillRect(eyeX, ry + 2 + hover, 3, 2);
-        // Floating astral staff / casting orb
+  
         const orbX = this.dir === 1 ? rx + this.w + 1 : rx - 3;
         ctx.fillStyle = this.aiState === "WINDUP" ? PALETTE.white : PALETTE.soulCyan;
         ctx.fillRect(orbX, ry + 3 + hover, 3, 3);
@@ -2684,14 +2585,14 @@
   
       if (this.type === "duelist") {
         const crouch = this.aiState === "WINDUP" ? 2 : 0;
-        // Mantis Duelist sleek armored silhouette + twin scythe blades
+  
         ctx.fillStyle = "#1e272e";
         ctx.fillRect(rx + 2, ry + this.h - 3, 2, 3);
         ctx.fillRect(rx + this.w - 4, ry + this.h - 3, 2, 3);
   
         ctx.fillStyle = "#20bf6b";
         ctx.fillRect(rx + 1, ry + 2 + crouch, this.w - 2, this.h - 5 - crouch);
-        // Mantis horned mask
+  
         ctx.fillStyle = PALETTE.white;
         ctx.fillRect(rx + 2, ry + crouch, this.w - 4, 3);
         ctx.fillRect(rx + 1, ry - 2 + crouch, 2, 2);
@@ -2700,7 +2601,6 @@
         const eyeX = this.dir === 1 ? rx + 5 : rx + 2;
         ctx.fillRect(eyeX, ry + 1 + crouch, 2, 2);
   
-        // Scythe blade slash visual during ATTACK or held ready
         ctx.fillStyle = this.aiState === "ATTACK" ? PALETTE.white : PALETTE.relicCyan;
         const bladeX = this.dir === 1 ? rx + this.w : rx - 4;
         const bladeW = this.aiState === "ATTACK" ? 7 : 3;
@@ -2716,29 +2616,24 @@
       const bounce = this.aiState === "WINDUP" ? 1 : Math.sin(this.animTick * 0.22) > 0.3 ? 1 : 0;
       const isCharger = this.type === "charger";
   
-      // Animated legs
       ctx.fillStyle = "#1e272e";
       const step = Math.floor(this.animTick / 5) % 2;
       ctx.fillRect(rx + 1 + step, ry + this.h - 2, 2, 2);
       ctx.fillRect(rx + this.w - 3 - step, ry + this.h - 2, 2, 2);
   
-      // Armored body
       ctx.fillStyle = isCharger ? PALETTE.enemyCharger : PALETTE.enemyBody;
       ctx.fillRect(rx, ry + bounce, this.w, this.h - 2 - bounce);
   
-      // Horns / Crown
       ctx.fillStyle = isCharger ? PALETTE.swordGlow : PALETTE.enemyEye;
       ctx.fillRect(rx + 1, ry - 2 + bounce, 2, 2);
       ctx.fillRect(rx + this.w - 3, ry - 2 + bounce, 2, 2);
   
-      // Visor & Eye
       ctx.fillStyle = PALETTE.white;
       const eyeOffset = this.dir === 1 ? 5 : 1;
       ctx.fillRect(rx + eyeOffset, ry + 3 + bounce, 4, 2);
       ctx.fillStyle = PALETTE.enemyEye;
       ctx.fillRect(rx + eyeOffset + (this.dir === 1 ? 2 : 0), ry + 3 + bounce, 2, 2);
   
-      // Crimson Vanguard heavy front shield & lance
       if (isCharger) {
         const shieldX = this.dir === 1 ? rx + this.w - 1 : rx - 2;
         ctx.fillStyle = PALETTE.swordGlow;
@@ -2752,14 +2647,6 @@
     }
   }
 
-  // --- Module: src/entities/Boss.js ---
-  /**
-   * Stage 10 Final Boss: "Seraph Vael, Warden of the Eclipse".
-   * Features 2 phases and 3 telegraphed attack patterns:
-   *  1. Blazing Lunge (horizontal telegraph beam + high-speed dash)
-   *  2. Eclipse Dive (aerial teleport + vertical warning beam + shockwave slam)
-   *  3. Astral Barrage (center hover + fan of deflectable astral orbs)
-   */
   class Boss extends PhysicsBody {
     constructor(x, y, game) {
       super(x, y, 14, 18);
@@ -2802,7 +2689,6 @@
       game.hitstop = 4;
       game.camera.shake(4.5, 8);
   
-      // Phase 2 transition at 50% HP
       if (this.phase === 1 && this.hp <= this.maxHp / 2 && this.hp > 0) {
         this.phase = 2;
         this.state = "PHASE_TRANSITION";
@@ -3067,7 +2953,6 @@
       const rx = Math.round(this.x);
       const ry = Math.round(this.y);
   
-      // Draw Attack Telegraphs
       if (this.state === "TELEGRAPH_LUNGE") {
         ctx.fillStyle = this.stateTimer % 4 < 2 ? "rgba(235, 59, 90, 0.55)" : "rgba(254, 211, 48, 0.55)";
         const lineX = this.facing === 1 ? rx + this.w : rx - 140;
@@ -3080,7 +2965,6 @@
         ctx.fillRect(rx - 3, ry - 3, this.w + 6, this.h + 6);
       }
   
-      // Draw Boss Projectiles
       for (const p of this.projectiles) {
         const px = Math.round(p.x);
         const py = Math.round(p.y);
@@ -3099,34 +2983,28 @@
       const wingOffset = Math.sin(this.animTick * 0.2) > 0 ? -2 : 1;
       const wingColor = this.phase === 2 ? PALETTE.bossCrimson : PALETTE.bossGold;
   
-      // Seraphic Wings
       ctx.fillStyle = wingColor;
       ctx.fillRect(rx - 5, ry + 2 + wingOffset, 5, 8);
       ctx.fillRect(rx + this.w, ry + 2 + wingOffset, 5, 8);
       ctx.fillRect(rx - 3, ry + 10 + wingOffset, 3, 4);
       ctx.fillRect(rx + this.w, ry + 10 + wingOffset, 3, 4);
   
-      // Royal Mantle / Cloak
       ctx.fillStyle = PALETTE.bossCloak;
       ctx.fillRect(rx + 1, ry + 5, this.w - 2, this.h - 5);
   
-      // Armored Torso
       ctx.fillStyle = PALETTE.bossArmor;
       ctx.fillRect(rx + 2, ry + 4, this.w - 4, 9);
   
-      // Eclipse Crown & Helm
       ctx.fillStyle = PALETTE.bossGold;
       ctx.fillRect(rx + 3, ry, this.w - 6, 4);
       ctx.fillRect(rx + 2, ry - 2, 2, 2);
       ctx.fillRect(rx + 6, ry - 3, 2, 3);
       ctx.fillRect(rx + this.w - 4, ry - 2, 2, 2);
   
-      // Glowing Visor
       ctx.fillStyle = this.phase === 2 ? PALETTE.bossCrimson : PALETTE.white;
       const eyeX = this.facing === 1 ? rx + 7 : rx + 3;
       ctx.fillRect(eyeX, ry + 2, 4, 2);
   
-      // Astral Greatsword
       ctx.fillStyle = PALETTE.swordGlow;
       const bladeX = this.facing === 1 ? rx + this.w + 1 : rx - 4;
       ctx.fillRect(bladeX, ry + 4, 3, 12);
@@ -3135,12 +3013,6 @@
     }
   }
 
-  // --- Module: src/entities/Player.js ---
-  /**
-   * Player entity featuring 4-directional sword combat, 3-hit combo chains,
-   * downward pogo bounce, wall-slide/wall-jump, horizontal dash, and Hollow Knight-style
-   * Hold-to-Focus Soul Healing + Tap-to-Cast Astral Wave.
-   */
   class Player extends PhysicsBody {
     constructor(x, y, game) {
       super(x, y, PLAYER_CONFIG.WIDTH, PLAYER_CONFIG.HEIGHT);
@@ -3158,7 +3030,6 @@
       this.hasSword = false;
       this.swordShrineClaimed = false;
   
-      // Platforming state
       this.coyoteTimer = 0;
       this.jumpBuffer = 0;
       this.pogoJumping = false;
@@ -3166,13 +3037,11 @@
       this.wallDir = 0;
       this.wallJumpLock = 0;
   
-      // Dash state
       this.canDash = true;
       this.dashTimer = 0;
       this.dashCooldown = 0;
       this.dashDirX = 0;
   
-      // Combat & Combo state
       this.attackTimer = 0;
       this.attackMaxTimer = PLAYER_CONFIG.ATTACK_FRAMES;
       this.attackCooldown = 0;
@@ -3184,14 +3053,12 @@
       this.swingDidRecoil = false;
       this.invulnTimer = 0;
   
-      // Hollow Knight-style Soul Focus channel & Astral Wave projectiles
       this.skillHoldTimer = 0;
       this.skillConsumedThisHold = false;
       this.focusTimer = 0;
       this.focusFlashTimer = 0;
       this.waves = [];
   
-      // Visual animation & Verlet scarf nodes
       this.animTick = 0;
       this.scaleX = 1;
       this.scaleY = 1;
@@ -3292,7 +3159,6 @@
       this.game.particles.addShockwave(this.x + 3, this.y + 4, 26, PALETTE.white, 16);
       this.game.particles.addFloatingText(this.x - 10, this.y - 10, "SOUL FOCUS!", PALETTE.white, 38);
   
-      // Spawn flying heart from player's body in screen-space directly into the HUD heart slot!
       const targetHeartIndex = Math.min(this.maxHp - 1, this.hp);
       const heartSpan = this.maxHp * 10;
       const hudStartX = VIEWPORT.WIDTH - heartSpan - 6;
@@ -3387,7 +3253,6 @@
           );
         }
   
-        // Check collision against enemies
         for (const enemy of level.enemies) {
           if (enemy.dead || w.hitSet.has(enemy)) continue;
           if (
@@ -3401,7 +3266,6 @@
           }
         }
   
-        // Check collision against Boss
         if (level.boss && !level.boss.dead && !w.hitSet.has(level.boss)) {
           const b = level.boss;
           if (w.x < b.x + b.w && w.x + w.w > b.x && w.y < b.y + b.h && w.y + w.h > b.y) {
@@ -3465,17 +3329,14 @@
         this.pogoJumping = false;
       }
   
-      // Jump Buffer
       if (input.actionPressed("jump")) {
         this.jumpBuffer = PLAYER_CONFIG.JUMP_BUFFER_FRAMES;
       } else if (this.jumpBuffer > 0) {
         this.jumpBuffer--;
       }
   
-      // Horizontal directional input
       const rawMove = (input.actionDown("right") ? 1 : 0) - (input.actionDown("left") ? 1 : 0);
   
-      // --- HOLLOW KNIGHT-STYLE SOUL FOCUS HEAL (Hold Skill on ground) vs ASTRAL WAVE (Tap Skill) ---
       const skillDown = input.actionDown("skill");
       const canStartFocus =
         this.hasSword &&
@@ -3489,7 +3350,7 @@
         this.skillHoldTimer++;
   
         if (!this.skillConsumedThisHold && canStartFocus && this.skillHoldTimer >= PLAYER_CONFIG.FOCUS_HOLD_THRESHOLD) {
-          // Channeling Soul Focus: immobilized, glowing white, rising soul wisps
+  
           this.focusTimer++;
           this.vx = 0;
   
@@ -3500,7 +3361,7 @@
           if (this.focusTimer % 5 === 0) {
             const progressRatio = this.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES;
             this.game.sound.playFocusTick(progressRatio);
-            // Converging & rising white/cyan soul motes around the body
+  
             const offsetX = (Math.random() - 0.5) * 18;
             const offsetY = (Math.random() - 0.5) * 14;
             this.game.particles.spawn(
@@ -3516,7 +3377,6 @@
             );
           }
   
-          // Cancel focus if player jumps, dashes, attacks, or leaves ground
           if (input.actionPressed("jump") || input.actionPressed("dash") || input.actionPressed("attack") || !this.onGround) {
             this.focusTimer = 0;
             this.skillConsumedThisHold = true;
@@ -3524,14 +3384,14 @@
             this.completeFocusHeal();
           }
         } else if (!this.skillConsumedThisHold && this.skillHoldTimer === 1 && !canStartFocus) {
-          // Instant Astral Wave if airborne or already at full HP (or enough for wave but not heal)
+  
           if (this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST) {
             this.castAstralWave();
             this.skillConsumedThisHold = true;
           }
         }
       } else {
-        // Released Skill button: if it was a quick tap before Focus started, cast Astral Wave!
+  
         if (
           this.hasSword &&
           !this.skillConsumedThisHold &&
@@ -3552,7 +3412,6 @@
         this.facing = rawMove;
       }
   
-      // Dash Initiation
       if (!isFocusing && input.actionPressed("dash") && this.canDash && this.dashCooldown <= 0) {
         this.canDash = false;
         this.pogoJumping = false;
@@ -3575,7 +3434,6 @@
         this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.playerNoDash, PALETTE.white, 10);
       }
   
-      // Dash kinematics vs Standard platforming & Wall Slide
       if (this.dashTimer > 0) {
         this.dashTimer--;
         this.vx = this.dashDirX * PLAYER_CONFIG.DASH_SPEED;
@@ -3587,7 +3445,7 @@
           this.vx *= 0.5;
         }
       } else if (isFocusing) {
-        // Immobilized while channeling Soul Focus
+  
         this.vx = 0;
         this.vy = Math.min(PLAYER_CONFIG.MAX_FALL_SPEED, this.vy + PLAYER_CONFIG.GRAVITY_FALL);
       } else {
@@ -3611,7 +3469,6 @@
           }
         }
   
-        // Check wall-slide condition when airborne and pressing toward a solid wall
         this.wallSliding = false;
         this.wallDir = 0;
         if (!this.onGround && this.vy > 0 && rawMove !== 0) {
@@ -3633,7 +3490,6 @@
           }
         }
   
-        // Grounded / Coyote Jump or Wall Jump execution
         if (this.jumpBuffer > 0) {
           if (this.coyoteTimer > 0) {
             this.vy = PLAYER_CONFIG.JUMP_FORCE;
@@ -3686,12 +3542,10 @@
           }
         }
   
-        // Variable jump height cut
         if (!this.pogoJumping && !input.actionDown("jump") && this.vy < -1.0) {
           this.vy *= 0.54;
         }
   
-        // Gravity & Wall-Slide cap
         const isApex = !this.onGround && Math.abs(this.vy) < 0.65;
         const holdingLift = !this.onGround && this.vy < -0.5 && (input.actionDown("jump") || this.pogoJumping);
         const gravity = isApex
@@ -3703,7 +3557,6 @@
         this.vy = Math.min(maxFall, this.vy + gravity);
       }
   
-      // 4-Directional Attack & 3-Hit Combo Initiation (Forehand -> Backhand -> Solar Finisher!)
       if (!isFocusing && this.hasSword && input.actionPressed("attack") && this.attackCooldown <= 0) {
         if (this.comboResetTimer > 0) {
           this.comboStep = (this.comboStep + 1) % 3;
@@ -3728,7 +3581,7 @@
           if (rawMove !== 0) this.facing = rawMove;
           this.atkDirX = this.facing;
           this.atkDirY = 0;
-          // Subtle forward lunge on 3rd hit Solar Finisher
+  
           if (this.comboStep === 2 && this.onGround) {
             this.vx = this.facing * 2.1;
             this.game.particles.spawnBurst(
@@ -3742,7 +3595,6 @@
         }
       }
   
-      // Sub-pixel collision resolution (with upward corner correction enabled)
       this.moveX(this.vx, level, () => {
         this.vx = 0;
       });
@@ -3758,19 +3610,16 @@
       this.updateScarf();
       this.updateWaves(level);
   
-      // Active multi-frame slash hitbox check
       if (this.attackTimer > 0) {
         this.checkActiveSlash(level);
         this.attackTimer--;
       }
   
-      // Bottom pit hazard
       if (this.y > level.rows * VIEWPORT.TILE + 8) {
         this.die();
         return;
       }
   
-      // Spike hazard check
       const pogoSavedFromSpikes =
         (this.pogoJumping || (this.swingDidRecoil && this.atkDirY === 1)) && this.vy < 0;
       if (!pogoSavedFromSpikes && level.collideSpike(this.x, this.y, this.w, this.h)) {
@@ -3778,7 +3627,6 @@
         return;
       }
   
-      // Stage 2 Celestial Blade Shrine
       if (level.pedestal && !this.swordShrineClaimed) {
         const ped = level.pedestal;
         if (
@@ -3799,7 +3647,6 @@
         }
       }
   
-      // Attunement Checkpoint Shrine interaction (restores HP and binds respawn point!)
       if (level.checkpoint) {
         const cp = level.checkpoint;
         if (
@@ -3835,7 +3682,6 @@
         }
       }
   
-      // Starlight Relic pickups
       for (const r of level.relics) {
         if (!r.collected) {
           if (
@@ -3863,7 +3709,6 @@
         }
       }
   
-      // Sanctuary Key pickups
       for (const k of level.keys) {
         if (!k.collected) {
           if (
@@ -3890,7 +3735,6 @@
         }
       }
   
-      // Grand Gate proximity unlock
       for (const enemy of level.enemies) {
         if (!enemy.dead && enemy.isKeyGate && this.keysCollected >= 3) {
           if (
@@ -3904,7 +3748,6 @@
         }
       }
   
-      // Enemy, Enemy Projectile & Boss contact damage (dash grants brief evasion i-frames)
       if (this.invulnTimer <= 0 && this.dashTimer <= 0) {
         for (const enemy of level.enemies) {
           if (!enemy.dead && !enemy.isDummy && enemy.knockbackTimer <= 0 && this.intersects(enemy)) {
@@ -3958,7 +3801,6 @@
       for (const enemy of level.enemies) {
         if (enemy.dead) continue;
   
-        // Deflect enemy projectiles with blade slash!
         if (enemy.projectiles && enemy.projectiles.length > 0) {
           for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
             const proj = enemy.projectiles[i];
@@ -4001,7 +3843,6 @@
         }
       }
   
-      // Check Boss & Boss Projectiles (Parry/Deflect!)
       if (level.boss && !level.boss.dead) {
         const b = level.boss;
         if (
@@ -4038,7 +3879,6 @@
         }
       }
   
-      // Downward pogo bounce off spikes
       let pogoSpike = false;
       if (!this.swingDidRecoil && this.atkDirY === 1 && level.collideSpike(hb.x, hb.y, hb.w, hb.h)) {
         pogoSpike = true;
@@ -4080,34 +3920,6 @@
     }
   }
 
-  // --- Module: src/world/stages.js ---
-  /**
-   * Stage definitions for Chapters I through XII, including:
-   *  - Stage I (Silent Precipice) with Awakening Attunement Shrine
-   *  - Stage V (Crimson Bastion) expanded 80x36 scrolling fortress with Citadel Attunement Shrine
-   *  - Stage VII (Mantis Cloister) featuring Mantis Duelists
-   *  - Stage IX (Astral Observatory) featuring Sanctum Acolytes
-   *  - Stage XI (The Grand Labyrinth) 120x60 non-linear fortress with Sanctum Nexus Shrine
-   *  - Stage XII (Eclipse Sanctum) Final Boss Arena against Seraph Vael
-   *
-   * Tile Legend:
-   *  # = Solid stone / runic architecture
-   *  ^ = Lethal crystal spikes (can be pogo-slashed)
-   *  P = Player spawn coordinate
-   *  S = Celestial Blade Shrine (Stage 2)
-   *  K = Attunement Checkpoint Shrine (Stages 1, 5, and 11)
-   *  Q = Sanctum Key (Stage 11)
-   *  R = Hidden Starlight Relic (3 Relics upgrades Max Hearts to 4)
-   *  G = Destructible Runic Barrier Gate
-   *  L = 3-Key Grand Sanctum Gate
-   *  E = Void Stalker (Aggressive Lunge Patrol Enemy)
-   *  C = Crimson Vanguard (Shield-Counter Charger Enemy)
-   *  F = Astral Construct (Aimed Bolt Flying Enemy)
-   *  D = Mantis Duelist (Fast Scythe Lunge & Counter Duelist)
-   *  M = Sanctum Acolyte (Teleporting Void-Orb Mage)
-   *  B = Seraph Vael, Warden of the Eclipse (Stage 12 Boss)
-   */
-  
   function buildStage5CrimsonBastion() {
     const cols = 80;
     const rows = 36;
@@ -4121,47 +3933,38 @@
       }
     };
   
-    // Outer bastion walls & floor
     fillRect(0, 0, rows - 1, cols - 1, "#");
     fillRect(2, 2, rows - 5, cols - 3, ".");
   
-    // Right exit corridor (rows 22..25 on right border)
     fillRect(22, cols - 3, 25, cols - 1, ".");
     fillRect(26, 66, 31, cols - 1, "#");
   
-    // Entry Courtyard (Left Wing, cols 2..24)
     fillRect(28, 2, 31, 14, "#");
     g[27][5] = "P";
     g[27][11] = "E";
   
-    // Spike moat & stepping battlements
     fillRect(31, 15, 31, 25, "^");
     fillRect(26, 17, 27, 22, "#");
     g[25][19] = "C";
   
-    // Lower Dungeon & Central Ascent (cols 26..44)
     fillRect(28, 26, 31, 38, "#");
     g[27][31] = "D";
     fillRect(22, 28, 23, 35, "#");
     fillRect(17, 22, 18, 27, "#");
     g[16][24] = "F";
   
-    // Upper West Alcove -> Hidden Starlight Relic #2
     fillRect(12, 6, 13, 18, "#");
     fillRect(13, 19, 13, 22, "^");
     g[11][14] = "C";
     g[11][8] = "R";
   
-    // Central Citadel Keep & Attunement Shrine (cols 36..52, rows 15..20)
     fillRect(18, 36, 20, 52, "#");
-    g[17][43] = "K"; // Mid-fortress Attunement Shrine!
+    g[17][43] = "K";
   
-    // High Battlements & Guard Tower (cols 48..76)
     fillRect(12, 48, 13, 60, "#");
     g[11][54] = "D";
     g[10][63] = "F";
   
-    // Lower East Gauntlet leading to the Sealed Bastion Gate
     fillRect(31, 39, 31, 65, "^");
     fillRect(26, 44, 27, 51, "#");
     g[25][48] = "C";
@@ -4170,7 +3973,6 @@
     g[25][60] = "D";
     g[20][59] = "F";
   
-    // Sealed Runic Gate guarding the Bastion Exit
     fillRect(18, 66, 21, 79, "#");
     for (let r = 22; r <= 25; r++) {
       g[r][72] = "G";
@@ -4200,30 +4002,24 @@
       }
     };
   
-    // Outer fortress perimeter
     fillRect(0, 0, rows - 1, cols - 1, "#");
     fillRect(2, 2, rows - 4, cols - 3, ".");
   
-    // Horizontal sector dividers
     fillRect(19, 2, 20, cols - 3, "#");
     fillRect(39, 2, 40, cols - 3, "#");
   
-    // Vertical connecting shafts
     fillRect(18, 28, 41, 35, ".");
     fillRect(18, 76, 41, 83, ".");
   
-    // Central Hub (Rows 21..38)
     fillRect(35, 2, 38, 27, "#");
     g[34][6] = "P";
-    g[34][15] = "K"; // Grand Labyrinth Attunement Shrine
+    g[34][15] = "K";
   
-    // Left Shaft stepping ledges
     fillRect(35, 30, 35, 33, "#");
     fillRect(30, 28, 30, 31, "#");
     fillRect(25, 32, 25, 35, "#");
     fillRect(20, 29, 20, 32, "#");
   
-    // Central bridge between shafts
     fillRect(35, 36, 38, 75, "#");
     fillRect(36, 44, 38, 50, ".");
     fillRect(38, 44, 38, 50, "^");
@@ -4236,13 +4032,11 @@
     g[34][53] = "D";
     g[34][71] = "C";
   
-    // Right-Center Shaft stepping ledges
     fillRect(35, 78, 35, 81, "#");
     fillRect(30, 76, 30, 79, "#");
     fillRect(25, 80, 25, 83, "#");
     fillRect(20, 77, 20, 80, "#");
   
-    // Grand Sanctum Corridor leading to Stage 12 Boss Arena
     fillRect(21, 84, 30, 119, "#");
     fillRect(35, 84, 38, 119, "#");
     fillRect(31, 84, 34, 119, ".");
@@ -4250,7 +4044,6 @@
       g[r][96] = "L";
     }
   
-    // Top-Left Wing -> Key #1
     fillRect(15, 18, 15, 25, "#");
     fillRect(12, 10, 12, 15, "#");
     fillRect(9, 3, 9, 8, "#");
@@ -4259,7 +4052,6 @@
     g[11][12] = "M";
     g[10][21] = "F";
   
-    // Top-Right Wing -> Key #2
     fillRect(15, 38, 18, 45, "#");
     fillRect(15, 52, 18, 58, "#");
     fillRect(18, 46, 18, 51, "^");
@@ -4277,7 +4069,6 @@
     fillRect(11, 107, 18, 116, "#");
     g[10][112] = "Q";
   
-    // Lower Labyrinth -> Key #3 + Hidden Relic #5
     fillRect(45, 29, 45, 33, "#");
     fillRect(50, 28, 50, 32, "#");
     fillRect(55, 20, 58, 38, "#");
@@ -4314,7 +4105,7 @@
     };
   }
   const STAGES = [
-    // STAGE 1 (CH. I): SILENT PRECIPICE (Movement, Jump, Dash & First Attunement Shrine)
+  
     {
       exitY: 124,
       prompts: [
@@ -4349,7 +4140,6 @@
       ]
     },
   
-    // STAGE 2 (CH. II): CELESTIAL SHRINE (Unlock Astral Blade & 3-Hit Combo)
     {
       exitY: 108,
       prompts: [
@@ -4383,7 +4173,6 @@
       ]
     },
   
-    // STAGE 3 (CH. III): FIRST BLOOD (Patrol Stalkers, Hold-to-Focus Heal & Relic #1)
     {
       exitY: 108,
       prompts: [
@@ -4416,7 +4205,6 @@
       ]
     },
   
-    // STAGE 4 (CH. IV): WINDWARD CHASM (Down-Slash Pogo Across Chasms & Flyers)
     {
       exitY: 100,
       prompts: [{ x: 64, y: 54, text: "[DOWN+X] POGO REFRESHES DASH" }],
@@ -4447,10 +4235,8 @@
       ]
     },
   
-    // STAGE 5 (CH. V): CRIMSON BASTION (Expanded 80x36 Citadel + Keep Attunement Shrine + Relic #2)
     buildStage5CrimsonBastion(),
   
-    // STAGE 6 (CH. VI): SHATTERED ARCHES (Aerial Flyers, Pogo Chains & Relic #3)
     {
       exitY: 84,
       prompts: [],
@@ -4481,7 +4267,6 @@
       ]
     },
   
-    // STAGE 7 (CH. VII): MANTIS CLOISTER (New Stage - Agile Mantis Duelists!)
     {
       exitY: 100,
       prompts: [{ x: 36, y: 56, text: "BEWARE THE MANTIS DUELISTS" }],
@@ -4512,7 +4297,6 @@
       ]
     },
   
-    // STAGE 8 (CH. VIII): TWIN CONDUITS (Dual Crimson Chargers & Sealed Gate)
     {
       exitY: 100,
       prompts: [],
@@ -4543,7 +4327,6 @@
       ]
     },
   
-    // STAGE 9 (CH. IX): ASTRAL OBSERVATORY (New Stage - Teleporting Sanctum Acolytes!)
     {
       exitY: 92,
       prompts: [{ x: 40, y: 44, text: "SLASH ENEMY ORBS TO PARRY & GAIN SOUL" }],
@@ -4574,7 +4357,6 @@
       ]
     },
   
-    // STAGE 10 (CH. X): SANCTUM THRESHOLD (Gauntlet & Relic #4)
     {
       exitY: 92,
       prompts: [],
@@ -4605,10 +4387,8 @@
       ]
     },
   
-    // STAGE 11 (CH. XI): THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania + Shrine)
     buildStage11Labyrinth(),
   
-    // STAGE 12 (CH. XII): ECLIPSE SANCTUM (Final Boss Arena - Seraph Vael)
     {
       exitY: 108,
       prompts: [{ x: 96, y: 38, text: "VANQUISH SERAPH VAEL" }],
@@ -4640,11 +4420,6 @@
     }
   ];
 
-  // --- Module: src/world/LevelManager.js ---
-  /**
-   * Tilemap loader, neighbor-aware autotiler, collision detector,
-   * and stage lifecycle manager with persistent HP across stage transitions.
-   */
   class LevelManager {
     constructor(game) {
       this.game = game;
@@ -4674,7 +4449,6 @@
       this.currentIndex = Math.max(0, Math.min(STAGES.length - 1, index));
       this.game.saveManager.unlockStage(this.currentIndex);
   
-      // Select biome soundtrack
       const meta = STAGE_METADATA[this.currentIndex] || STAGE_METADATA[0];
       if (meta.biome === "eclipse") {
         this.game.sound.setTrack("boss");
@@ -4694,7 +4468,6 @@
         this.game.player.swordShrineClaimed = true;
       }
   
-      // Only restore full HP on new run, shrine respawn, or shrine warp — NOT when walking between stages!
       if (restoreFullHp || this.game.player.hp <= 0) {
         this.game.player.hp = this.game.player.maxHp;
       }
@@ -4885,7 +4658,6 @@
         );
       }
   
-      // Advance to next stage when crossing right exit boundary (KEEPING current HP!)
       if (player.x > this.cols * VIEWPORT.TILE - 4) {
         if (this.currentIndex < STAGES.length - 1) {
           this.load(this.currentIndex + 1, false, false);
@@ -4902,7 +4674,6 @@
       const startRow = Math.max(0, Math.floor(camY / VIEWPORT.TILE) - 1);
       const endRow = Math.min(this.rows - 1, Math.ceil((camY + VIEWPORT.HEIGHT) / VIEWPORT.TILE) + 1);
   
-      // Neighbor-aware autotiled solid blocks & spikes
       for (let r = startRow; r <= endRow; r++) {
         for (let c = startCol; c <= endCol; c++) {
           const wx = c * VIEWPORT.TILE;
@@ -4953,7 +4724,6 @@
         }
       }
   
-      // Contextual tutorial prompts
       for (const p of this.prompts) {
         if (p.reqSword && !player.hasSword) continue;
         if (p.hideOnSword && player.hasSword) continue;
@@ -4963,7 +4733,6 @@
         drawPixelText(ctx, p.text, p.x, bobY, color, PALETTE.textShadow);
       }
   
-      // Right exit indicator (for stages 1-11)
       if (this.currentIndex < STAGES.length - 1) {
         const bobX = Math.round(Math.sin(this.tick * 0.1) * 2);
         drawPixelText(
@@ -4976,7 +4745,6 @@
         );
       }
   
-      // Stage 2 Celestial Blade Shrine
       if (this.pedestal) {
         const px = this.pedestal.x;
         const py = this.pedestal.y;
@@ -4996,7 +4764,6 @@
         }
       }
   
-      // Attunement Checkpoint Shrine
       if (this.checkpoint) {
         const cx = this.checkpoint.x;
         const cy = this.checkpoint.y;
@@ -5014,7 +4781,6 @@
         ctx.fillRect(cx + 3, cy - 5, 2, 3);
       }
   
-      // Starlight Relics
       for (const r of this.relics) {
         if (r.collected) continue;
         const ry = r.y + Math.round(Math.sin(this.tick * 0.08 + r.x) * 2);
@@ -5027,7 +4793,6 @@
         ctx.fillRect(r.x + 2, ry + 2, 2, 2);
       }
   
-      // Sanctum Keys
       for (const k of this.keys) {
         if (k.collected) continue;
         const ky = k.y + Math.round(Math.sin(this.tick * 0.09 + k.x) * 2);
@@ -5043,7 +4808,6 @@
         ctx.fillRect(k.x + 4, ky + 6, 2, 1);
       }
   
-      // Viewport-culled enemies
       for (const enemy of this.enemies) {
         if (
           enemy.x + enemy.w < camX - 24 ||
@@ -5056,14 +4820,12 @@
         enemy.draw(ctx);
       }
   
-      // Stage 12 Boss
       if (this.boss && !this.boss.dead) {
         this.boss.draw(ctx);
       }
     }
   }
 
-  // --- Module: src/ui/HUDRenderer.js ---
   const HEART_BITMAP = [
     "0110110",
     "1111111",
@@ -5082,11 +4844,6 @@
     const cc = String(centis).padStart(2, "0");
     return `${mm}:${ss}.${cc}`;
   }
-  
-  /**
-   * Renders the in-game HUD, Soul Focus progress bar, Boss health bar, Stage banners,
-   * Title screen, Pause overlay, Shrine Warp menu, Controls guide, and Victory screen.
-   */
   class HUDRenderer {
     constructor(game) {
       this.game = game;
@@ -5109,7 +4866,6 @@
     drawHUD(ctx) {
       const { player, level, saveManager } = this.game;
   
-      // Top-Left: Stage Numeral, Speedrun Timer & Relics
       const meta = STAGE_METADATA[level.currentIndex] || STAGE_METADATA[0];
       drawPixelText(ctx, `CH.${meta.numeral}`, 8, 7, PALETTE.swordGlow, PALETTE.textShadow);
       drawPixelText(
@@ -5138,7 +4894,6 @@
         drawPixelText(ctx, "MUTE", 98, 15, PALETTE.playerHair, PALETTE.textShadow);
       }
   
-      // Top-Right: Hearts
       const heartSpan = player.maxHp * 10;
       const startX = VIEWPORT.WIDTH - heartSpan - 6;
       const startY = 7;
@@ -5146,7 +4901,6 @@
         this.drawHeartIcon(ctx, startX + i * 10, startY, i < player.hp);
       }
   
-      // Soul Gauge Bar under Hearts
       const barW = heartSpan - 3;
       const barX = startX;
       const barY = startY + 9;
@@ -5170,7 +4924,6 @@
         ctx.fillRect(barX + 1, barY + 1, fillW, 2);
       }
   
-      // Soul Focus Channeling Progress Bar under Soul Gauge when holding to heal!
       if (player.focusTimer > 0) {
         const focusRatio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
         const focusW = Math.round(focusRatio * (barW - 2));
@@ -5193,7 +4946,6 @@
         );
       }
   
-      // Sanctum Keys beneath Soul Bar
       for (let i = 0; i < player.keysCollected; i++) {
         const kx = startX + i * 10 + 1;
         const ky = startY + 16;
@@ -5206,12 +4958,10 @@
         ctx.fillRect(kx + 2, ky + 4, 2, 1);
       }
   
-      // Stage Entry Banner
       if (level.bannerTimer > 0) {
         this.drawStageBanner(ctx, meta, level.bannerTimer);
       }
   
-      // Stage 12 Boss Health Bar
       if (level.boss && !level.boss.dead) {
         this.drawBossBar(ctx, level.boss);
       }
@@ -5281,17 +5031,14 @@
     drawTitleScreen(ctx) {
       const { menuIndex, saveManager, sound } = this.game;
   
-      // Dark vignette panel
       ctx.fillStyle = "rgba(9, 10, 20, 0.55)";
       ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
   
-      // Decorative cliff & hero silhouette on left
       ctx.fillStyle = "#12172c";
       ctx.fillRect(0, 132, 78, 48);
       ctx.fillStyle = "#3b4978";
       ctx.fillRect(0, 132, 78, 2);
   
-      // Hero silhouette overlooking the peaks
       const hx = 56;
       const hy = 122;
       ctx.fillStyle = PALETTE.playerCloak;
@@ -5304,7 +5051,6 @@
       ctx.fillStyle = PALETTE.swordGlow;
       ctx.fillRect(hx - 2, hy + 1, 2, 6);
   
-      // Main Title Banner
       drawPixelTextCentered(
         ctx,
         "CELESTIAL BLADE",
@@ -5324,7 +5070,6 @@
         1
       );
   
-      // Menu Box
       const boxW = 166;
       const boxH = 74;
       const boxX = Math.floor((VIEWPORT.WIDTH - boxW) / 2);
@@ -5352,7 +5097,6 @@
         );
       }
   
-      // Persistent Records Footer
       const bestTime =
         saveManager.data.bestTimeFrames !== null
           ? formatFramesToTime(saveManager.data.bestTimeFrames)
@@ -5413,7 +5157,6 @@
         ctx.fillRect(x, y, w, 1);
         ctx.fillRect(x, y + h - 1, w, 1);
   
-        // Shrine Beacon Icon on Left
         ctx.fillStyle = isUnlocked ? PALETTE.playerNoDash : PALETTE.heartEmpty;
         ctx.fillRect(x + 10, y + 7, 4, 12);
         ctx.fillStyle = isUnlocked ? PALETTE.white : PALETTE.textSubtle;
@@ -5648,11 +5391,6 @@
     }
   }
 
-  // --- Module: src/core/Game.js ---
-  /**
-   * Primary game coordinator managing the fixed-timestep loop,
-   * state transitions, Attunement Shrine respawns/warping, menus, and death/victory sequences.
-   */
   class Game {
     constructor(canvas, viewportFrame) {
       this.canvas = canvas;
@@ -5686,7 +5424,6 @@
       this.runDeaths = 0;
       this.victoryDelayTimer = 0;
   
-      // Active Attunement Shrine respawn state (defaults to Shrine I on Stage 0)
       this.checkpointStage = this.saveManager.data.lastShrineStage || 0;
       this.checkpointX = 0;
       this.checkpointY = 0;
@@ -5700,7 +5437,6 @@
         fadeAlpha: 0
       };
   
-      // Preload background stage for title screen ambiance
       this.level.load(this.checkpointStage, true, true);
   
       this.lastTime = performance.now();
@@ -5832,7 +5568,6 @@
         }
       }
   
-      // Respawn back at the last attuned Shrine with full HP (Hollow Knight bench style!)
       if (ds.timer >= 86) {
         ds.active = false;
         ds.fadeAlpha = 1.0;
@@ -5960,7 +5695,6 @@
       this.uiTick++;
       this.input.pollGamepad();
   
-      // Global hotkeys for Mute [M] and CRT Scanline Filter [T]
       if (this.input.actionPressed("mute")) {
         this.toggleMute();
       }
@@ -6063,7 +5797,6 @@
         return;
       }
   
-      // Render active game world
       this.ctx.save();
       this.ctx.translate(-this.camera.x, -this.camera.y);
   
@@ -6103,7 +5836,6 @@
     }
   }
 
-  // --- Module: src/main.js ---
   function bootstrap() {
     if (window.__celestialBlade) return;
     const canvas = document.getElementById("game");

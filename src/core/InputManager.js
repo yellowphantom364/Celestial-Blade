@@ -1,8 +1,3 @@
-/**
- * Unified input controller supporting dual keyboard layouts
- * (Arrow keys + Z/X/C/V and WASD + Space/J/K/L) plus HTML5 Gamepad polling.
- */
-
 const ACTION_BINDINGS = Object.freeze({
   left: ["ArrowLeft", "KeyA"],
   right: ["ArrowRight", "KeyD"],

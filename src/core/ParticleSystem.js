@@ -11,9 +11,6 @@ const MINI_HEART = [
   "0001000"
 ];
 
-/**
- * Particle emitter, dash afterimage trail, flying HUD heal hearts, and floating combat text system.
- */
 export class ParticleSystem {
   constructor() {
     this.particles = [];
@@ -159,7 +156,7 @@ export class ParticleSystem {
       const fh = this.flyingHearts[i];
       fh.progress++;
       const t = Math.min(1, fh.progress / fh.duration);
-      // Ease-in-out cubic curve along quadratic bezier
+
       const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
       const inv = 1 - ease;
       fh.x = inv * inv * fh.startX + 2 * inv * ease * fh.ctrlX + ease * ease * fh.targetX;
@@ -233,7 +230,7 @@ export class ParticleSystem {
 
       const hx = Math.round(fh.x);
       const hy = Math.round(fh.y);
-      // Outer white/cyan glow around flying heart
+
       ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
       ctx.fillRect(hx - 1, hy - 1, 9, 8);
       for (let r = 0; r < MINI_HEART.length; r++) {

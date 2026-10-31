@@ -1,18 +1,13 @@
 import { PLAYER_CONFIG } from "../config/constants.js";
 import { PALETTE } from "../config/palette.js";
 
-/**
- * Procedural pixel-art sprite and animation renderer for the player,
- * flowing scarf trail, 3-hit combo slash arcs, Soul Focus silhouette, and astral projectiles.
- */
 export class SpriteRenderer {
   static drawPlayer(ctx, player) {
-    // Always render active sword slash arc even on invulnerability blink frames
+
     if (player.attackTimer > 0) {
       SpriteRenderer.drawSlashArc(ctx, player);
     }
 
-    // Render active Astral Wave projectiles
     for (const wave of player.waves) {
       SpriteRenderer.drawAstralWave(ctx, wave);
     }
@@ -26,7 +21,6 @@ export class SpriteRenderer {
       player.focusFlashTimer > 0 ||
       (isFocusing && (player.focusTimer > 12 || player.focusTimer % 4 < 3));
 
-    // Draw simulated flowing scarf trail behind player
     const scarfColor = isWhiteSilhouette
       ? PALETTE.white
       : player.canDash
@@ -48,7 +42,6 @@ export class SpriteRenderer {
     const dx = Math.round(cx - dw / 2);
     const dy = Math.round(by - dh);
 
-    // Soul Focus glowing aura & levitation ring (Hollow Knight style!)
     if (isFocusing) {
       const ratio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
       const ringRadius = Math.max(3, Math.round((1 - ratio) * 14));
@@ -60,32 +53,29 @@ export class SpriteRenderer {
       ctx.fillRect(cx - 1, dy + 4 - ringRadius, 2, 2);
       ctx.fillRect(cx - 1, Math.min(by, dy + 4 + ringRadius), 2, 2);
 
-      // Rising vertical soul beam pillars
       const pillarH = Math.round(ratio * (dh + 6));
       ctx.fillStyle = player.focusTimer % 4 < 2 ? PALETTE.white : PALETTE.soulCyan;
       ctx.fillRect(dx - 2, by - pillarH, 1, pillarH);
       ctx.fillRect(dx + dw + 1, by - pillarH, 1, pillarH);
     }
 
-    // Subtle idle breathing offset
     const isMoving = Math.abs(player.vx) > 0.2;
     const breathOffset =
       player.onGround && !isMoving && Math.sin(player.animTick * 0.12) > 0.5 ? 1 : 0;
 
     if (isWhiteSilhouette) {
-      // Pure luminous white Soul Focus vessel silhouette
+
       ctx.fillStyle = PALETTE.soulCyan;
       ctx.fillRect(dx - 1, dy - 1 + breathOffset, dw + 2, dh + 1 - breathOffset);
       ctx.fillStyle = PALETTE.white;
       ctx.fillRect(dx, dy + breathOffset, dw, dh - breathOffset);
-      // Glowing cyan focus eyes
+
       ctx.fillStyle = PALETTE.soulCyan;
       const eyeX = player.facing === 1 ? dx + dw - 2 : dx;
       ctx.fillRect(eyeX, dy + 2 + breathOffset, 2, 2);
       return;
     }
 
-    // Legs / Animated Run Cycle
     ctx.fillStyle = PALETTE.playerCloakDark;
     if (!player.onGround) {
       ctx.fillRect(dx + 1, by - 2, dw - 2, 2);
@@ -103,25 +93,20 @@ export class SpriteRenderer {
       ctx.fillRect(dx + dw - 3, by - 2, 2, 2);
     }
 
-    // Cloak / Torso
     ctx.fillStyle = PALETTE.playerCloak;
     ctx.fillRect(dx, dy + 3 + breathOffset, dw, Math.max(2, dh - 4 - breathOffset));
 
-    // Shoulder / Scarf Collar highlight
     ctx.fillStyle = scarfColor;
     ctx.fillRect(dx, dy + 3 + breathOffset, dw, 1);
 
-    // Head & Hair
     ctx.fillStyle = scarfColor;
     ctx.fillRect(dx, dy + breathOffset, dw, 3);
     ctx.fillRect(dx - player.facing * 1, dy + 1 + breathOffset, 1, 2);
 
-    // Face / Visor Eye
     ctx.fillStyle = PALETTE.playerBody;
     const eyeX = player.facing === 1 ? dx + dw - 2 : dx;
     ctx.fillRect(eyeX, dy + 1 + breathOffset, 2, 2);
 
-    // Sheathed Celestial Blade on back when unlocked and not swinging
     if (player.hasSword && player.attackTimer <= 0) {
       ctx.fillStyle = player.comboResetTimer > 0 && player.comboStep === 1 ? PALETTE.swordCombo : PALETTE.swordGlow;
       const sx = player.facing === 1 ? dx - 2 : dx + dw;
@@ -130,7 +115,6 @@ export class SpriteRenderer {
       ctx.fillRect(sx, dy + 1 + breathOffset, 1, 2);
     }
 
-    // 3-Hit Combo Step Pips above player when chaining strikes
     if (player.comboResetTimer > 0 && player.hasSword) {
       for (let i = 0; i < 3; i++) {
         const pipX = cx - 5 + i * 4;

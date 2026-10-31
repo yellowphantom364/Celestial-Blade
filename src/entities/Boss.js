@@ -2,13 +2,6 @@ import { PLAYER_CONFIG, VIEWPORT } from "../config/constants.js";
 import { PALETTE } from "../config/palette.js";
 import { PhysicsBody } from "../core/PhysicsBody.js";
 
-/**
- * Stage 10 Final Boss: "Seraph Vael, Warden of the Eclipse".
- * Features 2 phases and 3 telegraphed attack patterns:
- *  1. Blazing Lunge (horizontal telegraph beam + high-speed dash)
- *  2. Eclipse Dive (aerial teleport + vertical warning beam + shockwave slam)
- *  3. Astral Barrage (center hover + fan of deflectable astral orbs)
- */
 export class Boss extends PhysicsBody {
   constructor(x, y, game) {
     super(x, y, 14, 18);
@@ -51,7 +44,6 @@ export class Boss extends PhysicsBody {
     game.hitstop = 4;
     game.camera.shake(4.5, 8);
 
-    // Phase 2 transition at 50% HP
     if (this.phase === 1 && this.hp <= this.maxHp / 2 && this.hp > 0) {
       this.phase = 2;
       this.state = "PHASE_TRANSITION";
@@ -316,7 +308,6 @@ export class Boss extends PhysicsBody {
     const rx = Math.round(this.x);
     const ry = Math.round(this.y);
 
-    // Draw Attack Telegraphs
     if (this.state === "TELEGRAPH_LUNGE") {
       ctx.fillStyle = this.stateTimer % 4 < 2 ? "rgba(235, 59, 90, 0.55)" : "rgba(254, 211, 48, 0.55)";
       const lineX = this.facing === 1 ? rx + this.w : rx - 140;
@@ -329,7 +320,6 @@ export class Boss extends PhysicsBody {
       ctx.fillRect(rx - 3, ry - 3, this.w + 6, this.h + 6);
     }
 
-    // Draw Boss Projectiles
     for (const p of this.projectiles) {
       const px = Math.round(p.x);
       const py = Math.round(p.y);
@@ -348,34 +338,28 @@ export class Boss extends PhysicsBody {
     const wingOffset = Math.sin(this.animTick * 0.2) > 0 ? -2 : 1;
     const wingColor = this.phase === 2 ? PALETTE.bossCrimson : PALETTE.bossGold;
 
-    // Seraphic Wings
     ctx.fillStyle = wingColor;
     ctx.fillRect(rx - 5, ry + 2 + wingOffset, 5, 8);
     ctx.fillRect(rx + this.w, ry + 2 + wingOffset, 5, 8);
     ctx.fillRect(rx - 3, ry + 10 + wingOffset, 3, 4);
     ctx.fillRect(rx + this.w, ry + 10 + wingOffset, 3, 4);
 
-    // Royal Mantle / Cloak
     ctx.fillStyle = PALETTE.bossCloak;
     ctx.fillRect(rx + 1, ry + 5, this.w - 2, this.h - 5);
 
-    // Armored Torso
     ctx.fillStyle = PALETTE.bossArmor;
     ctx.fillRect(rx + 2, ry + 4, this.w - 4, 9);
 
-    // Eclipse Crown & Helm
     ctx.fillStyle = PALETTE.bossGold;
     ctx.fillRect(rx + 3, ry, this.w - 6, 4);
     ctx.fillRect(rx + 2, ry - 2, 2, 2);
     ctx.fillRect(rx + 6, ry - 3, 2, 3);
     ctx.fillRect(rx + this.w - 4, ry - 2, 2, 2);
 
-    // Glowing Visor
     ctx.fillStyle = this.phase === 2 ? PALETTE.bossCrimson : PALETTE.white;
     const eyeX = this.facing === 1 ? rx + 7 : rx + 3;
     ctx.fillRect(eyeX, ry + 2, 4, 2);
 
-    // Astral Greatsword
     ctx.fillStyle = PALETTE.swordGlow;
     const bladeX = this.facing === 1 ? rx + this.w + 1 : rx - 4;
     ctx.fillRect(bladeX, ry + 4, 3, 12);

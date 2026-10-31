@@ -27,10 +27,6 @@ export function formatFramesToTime(frames) {
   return `${mm}:${ss}.${cc}`;
 }
 
-/**
- * Renders the in-game HUD, Soul Focus progress bar, Boss health bar, Stage banners,
- * Title screen, Pause overlay, Shrine Warp menu, Controls guide, and Victory screen.
- */
 export class HUDRenderer {
   constructor(game) {
     this.game = game;
@@ -53,7 +49,6 @@ export class HUDRenderer {
   drawHUD(ctx) {
     const { player, level, saveManager } = this.game;
 
-    // Top-Left: Stage Numeral, Speedrun Timer & Relics
     const meta = STAGE_METADATA[level.currentIndex] || STAGE_METADATA[0];
     drawPixelText(ctx, `CH.${meta.numeral}`, 8, 7, PALETTE.swordGlow, PALETTE.textShadow);
     drawPixelText(
@@ -82,7 +77,6 @@ export class HUDRenderer {
       drawPixelText(ctx, "MUTE", 98, 15, PALETTE.playerHair, PALETTE.textShadow);
     }
 
-    // Top-Right: Hearts
     const heartSpan = player.maxHp * 10;
     const startX = VIEWPORT.WIDTH - heartSpan - 6;
     const startY = 7;
@@ -90,7 +84,6 @@ export class HUDRenderer {
       this.drawHeartIcon(ctx, startX + i * 10, startY, i < player.hp);
     }
 
-    // Soul Gauge Bar under Hearts
     const barW = heartSpan - 3;
     const barX = startX;
     const barY = startY + 9;
@@ -114,7 +107,6 @@ export class HUDRenderer {
       ctx.fillRect(barX + 1, barY + 1, fillW, 2);
     }
 
-    // Soul Focus Channeling Progress Bar under Soul Gauge when holding to heal!
     if (player.focusTimer > 0) {
       const focusRatio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
       const focusW = Math.round(focusRatio * (barW - 2));
@@ -137,7 +129,6 @@ export class HUDRenderer {
       );
     }
 
-    // Sanctum Keys beneath Soul Bar
     for (let i = 0; i < player.keysCollected; i++) {
       const kx = startX + i * 10 + 1;
       const ky = startY + 16;
@@ -150,12 +141,10 @@ export class HUDRenderer {
       ctx.fillRect(kx + 2, ky + 4, 2, 1);
     }
 
-    // Stage Entry Banner
     if (level.bannerTimer > 0) {
       this.drawStageBanner(ctx, meta, level.bannerTimer);
     }
 
-    // Stage 12 Boss Health Bar
     if (level.boss && !level.boss.dead) {
       this.drawBossBar(ctx, level.boss);
     }
@@ -225,17 +214,14 @@ export class HUDRenderer {
   drawTitleScreen(ctx) {
     const { menuIndex, saveManager, sound } = this.game;
 
-    // Dark vignette panel
     ctx.fillStyle = "rgba(9, 10, 20, 0.55)";
     ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
 
-    // Decorative cliff & hero silhouette on left
     ctx.fillStyle = "#12172c";
     ctx.fillRect(0, 132, 78, 48);
     ctx.fillStyle = "#3b4978";
     ctx.fillRect(0, 132, 78, 2);
 
-    // Hero silhouette overlooking the peaks
     const hx = 56;
     const hy = 122;
     ctx.fillStyle = PALETTE.playerCloak;
@@ -248,7 +234,6 @@ export class HUDRenderer {
     ctx.fillStyle = PALETTE.swordGlow;
     ctx.fillRect(hx - 2, hy + 1, 2, 6);
 
-    // Main Title Banner
     drawPixelTextCentered(
       ctx,
       "CELESTIAL BLADE",
@@ -268,7 +253,6 @@ export class HUDRenderer {
       1
     );
 
-    // Menu Box
     const boxW = 166;
     const boxH = 74;
     const boxX = Math.floor((VIEWPORT.WIDTH - boxW) / 2);
@@ -296,7 +280,6 @@ export class HUDRenderer {
       );
     }
 
-    // Persistent Records Footer
     const bestTime =
       saveManager.data.bestTimeFrames !== null
         ? formatFramesToTime(saveManager.data.bestTimeFrames)
@@ -357,7 +340,6 @@ export class HUDRenderer {
       ctx.fillRect(x, y, w, 1);
       ctx.fillRect(x, y + h - 1, w, 1);
 
-      // Shrine Beacon Icon on Left
       ctx.fillStyle = isUnlocked ? PALETTE.playerNoDash : PALETTE.heartEmpty;
       ctx.fillRect(x + 10, y + 7, 4, 12);
       ctx.fillStyle = isUnlocked ? PALETTE.white : PALETTE.textSubtle;

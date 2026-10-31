@@ -1,10 +1,6 @@
 import { VIEWPORT, STAGE_METADATA } from "../config/constants.js";
 import { BIOME_THEMES, PALETTE } from "../config/palette.js";
 
-/**
- * Multi-layer parallax background renderer with biome palettes,
- * crisp circular pixel sun/moon/eclipse, stepped peaks, ruined pillars, and drifting motes.
- */
 export class BackgroundRenderer {
   constructor() {
     this.stars = Array.from({ length: 48 }, () => ({
@@ -65,12 +61,11 @@ export class BackgroundRenderer {
     const my = 34;
     const pulse = Math.sin(this.tick * 0.05) * 1.2;
 
-    // Multi-layered soft circular halo
     this.drawPixelCircle(ctx, mx, my, Math.round(23 + pulse), theme.moonGlow);
     this.drawPixelCircle(ctx, mx, my, Math.round(17 + pulse * 0.5), theme.moonGlow);
 
     if (biome === "eclipse") {
-      // Total Solar Eclipse: Blazing crimson/gold corona + solar flares + pitch-black umbral core
+
       for (let i = 0; i < 8; i++) {
         const angle = (Math.PI * 2 * i) / 8 + this.tick * 0.01;
         const rayLen = (i % 2 === 0 ? 18 : 15) + Math.sin(this.tick * 0.08 + i) * 2;
@@ -84,17 +79,17 @@ export class BackgroundRenderer {
       this.drawPixelCircle(ctx, mx, my, 10, PALETTE.white);
       this.drawPixelCircle(ctx, mx, my, 8, "#08040b");
     } else if (biome === "spire") {
-      // Astral Golden Sun / Amber Full Moon with solar crown & warm surface craters
+
       this.drawPixelCircle(ctx, mx, my, 12, "rgba(254, 211, 48, 0.35)");
       this.drawPixelCircle(ctx, mx, my, 10, PALETTE.swordGlow);
       this.drawPixelCircle(ctx, mx - 1, my - 1, 8, PALETTE.white);
-      // Subtle solar surface texture
+
       ctx.fillStyle = PALETTE.swordCombo;
       ctx.fillRect(mx + 2, my + 2, 3, 2);
       ctx.fillRect(mx - 4, my + 3, 2, 2);
       ctx.fillRect(mx + 3, my - 3, 2, 2);
     } else {
-      // Per-pixel Crescent Moon with Earthshine (no square cutout!)
+
       const r = 10;
       const shadowOffsetX = 4.2;
       const shadowOffsetY = -2.2;
@@ -110,11 +105,11 @@ export class BackgroundRenderer {
           const inShadow = sdx * sdx + sdy * sdy <= shadowR * shadowR;
 
           if (inShadow) {
-            // Subtle dark earthshine on the unlit lunar hemisphere
+
             ctx.fillStyle = biome === "labyrinth" ? "#16233b" : "#1c2442";
             ctx.fillRect(mx + dx, my + dy, 1, 1);
           } else {
-            // Lit crescent surface with subtle crater shading
+
             const isCrater =
               (dx === -4 && (dy === 1 || dy === 2)) ||
               (dx === -3 && dy === 2) ||
@@ -149,13 +144,11 @@ export class BackgroundRenderer {
     const theme = this.getTheme(levelIndex);
     const meta = STAGE_METADATA[levelIndex] || STAGE_METADATA[0];
 
-    // Multi-band atmospheric sky gradient
     ctx.fillStyle = theme.skyTop;
     ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
     ctx.fillStyle = theme.skyBottom;
     ctx.fillRect(0, Math.floor(VIEWPORT.HEIGHT * 0.45), VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
 
-    // Stars (skip drawing inside the celestial disc radius so stars never clip through the moon)
     const mx = 250;
     const my = 34;
     for (const s of this.stars) {
@@ -167,10 +160,8 @@ export class BackgroundRenderer {
       ctx.fillRect(s.x, s.y, s.size, s.size);
     }
 
-    // Crisp Celestial Body (Crescent Moon, Solar Crown, or Total Eclipse)
     this.drawCelestialBody(ctx, theme, meta.biome);
 
-    // Far mountain range
     const parallax1 = Math.floor((cameraX * 0.08 + levelIndex * 20) / 2) * 2;
     for (let i = -1; i < 6; i++) {
       const peakX = i * 72 - (parallax1 % 72);
@@ -178,7 +169,6 @@ export class BackgroundRenderer {
       this.drawSteppedPeak(ctx, peakX, peakY, 36, 4, theme.farPeak);
     }
 
-    // Mid mountain range
     const parallax2 = Math.floor((cameraX * 0.16 + levelIndex * 40) / 2) * 2;
     for (let i = -1; i < 8; i++) {
       const peakX = i * 52 - (parallax2 % 52);
@@ -186,7 +176,6 @@ export class BackgroundRenderer {
       this.drawSteppedPeak(ctx, peakX, peakY, 26, 2, theme.midPeak);
     }
 
-    // Ancient background pillars
     this.drawRuinedPillars(ctx, cameraX, levelIndex, theme.pillarColor);
   }
 

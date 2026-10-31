@@ -1,10 +1,3 @@
-#!/usr/bin/env node
-/**
- * Zero-dependency bundler that concatenates the modular ES6 source tree
- * into dist/bundle.js so the game runs both via HTTP ES modules and direct
- * file:// protocol opening.
- */
-
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,10 +35,6 @@ function stripModuleSyntax(code) {
 }
 
 const chunks = [
-  "/**",
-  " * Celestial Blade - Compiled Standalone Bundle",
-  " * Auto-generated from src/ ES6 modules via `npm run build`.",
-  " */",
   "(() => {",
   '  "use strict";'
 ];
@@ -54,7 +43,7 @@ for (const relPath of MODULE_ORDER) {
   const fullPath = path.join(rootDir, relPath);
   const raw = fs.readFileSync(fullPath, "utf8");
   const transformed = stripModuleSyntax(raw).trim();
-  chunks.push(`\n  // --- Module: ${relPath} ---\n  ${transformed.replace(/\n/g, "\n  ")}`);
+  chunks.push(`\n  ${transformed.replace(/\n/g, "\n  ")}`);
 }
 
 chunks.push("})();\n");

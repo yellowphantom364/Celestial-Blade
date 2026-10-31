@@ -1,8 +1,5 @@
 import { VIEWPORT } from "../config/constants.js";
 
-/**
- * Smooth viewport camera with directional lookahead and multi-axis trauma shake.
- */
 export class Camera {
   constructor() {
     this.x = 0;

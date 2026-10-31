@@ -1,9 +1,3 @@
-/**
- * Procedural Web Audio synthesizer featuring multi-layered dark-synth / chiptune
- * "tuff beats" (punchy 808/kick drums, crispy snare, 16th-note hi-hats, sub-basslines,
- * chord pads, and arpeggiated leads) plus combat & Soul Focus SFX.
- */
-
 const TRACKS = Object.freeze({
   exploration: {
     stepDuration: 0.145,
@@ -139,7 +133,7 @@ export class SoundEngine {
   triggerDrum(type, now) {
     if (!this.ctx || !this.masterGain) return;
     if (type === "K") {
-      // Punchy 808 / Synth Kick Drum
+
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = "sine";
@@ -152,7 +146,7 @@ export class SoundEngine {
       osc.start(now);
       osc.stop(now + 0.12);
     } else if (type === "S") {
-      // Crispy Synth Snare (body + filtered noise snap)
+
       const osc = this.ctx.createOscillator();
       const oGain = this.ctx.createGain();
       osc.type = "triangle";
@@ -181,7 +175,7 @@ export class SoundEngine {
         noise.stop(now + 0.09);
       }
     } else if (type === "H" && this.noiseBuffer) {
-      // Crisp 16th-note Hi-Hat
+
       const noise = this.ctx.createBufferSource();
       noise.buffer = this.noiseBuffer;
       const filter = this.ctx.createBiquadFilter();
@@ -216,13 +210,11 @@ export class SoundEngine {
       const now = this.ctx.currentTime;
       const step = this.musicStep++;
 
-      // 1. Percussion groove (Kick, Snare, Hats)
       const drumHit = activeTrack.drums[step % activeTrack.drums.length];
       if (drumHit) {
         this.triggerDrum(drumHit, now);
       }
 
-      // 2. Driving filtered sub-bassline on 8th notes
       if (step % 2 === 0) {
         const bassFreq = activeTrack.bass[Math.floor(step / 2) % activeTrack.bass.length];
         if (bassFreq) {
@@ -244,7 +236,6 @@ export class SoundEngine {
         }
       }
 
-      // 3. Arpeggiated synth lead + detuned shimmer
       const leadFreq = activeTrack.melody[step % activeTrack.melody.length];
       if (leadFreq && leadFreq > 0) {
         const osc = this.ctx.createOscillator();
@@ -381,7 +372,6 @@ export class SoundEngine {
     noise.start(now);
     noise.stop(now + 0.08);
 
-    // Extra metallic resonance on 3rd-hit Solar Finisher
     if (comboStep === 2) {
       const osc = this.ctx.createOscillator();
       const oGain = this.ctx.createGain();

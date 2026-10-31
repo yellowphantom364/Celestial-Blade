@@ -1,7 +1,3 @@
-/**
- * Core display, physics, and gameplay tuning constants.
- */
-
 export const VIEWPORT = Object.freeze({
   WIDTH: 320,
   HEIGHT: 180,
