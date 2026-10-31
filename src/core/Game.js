@@ -1,5 +1,11 @@
 import { SoundEngine } from "../audio/SoundEngine.js";
-import { GAME_STATE, PLAYER_CONFIG, STAGE_METADATA, VIEWPORT } from "../config/constants.js";
+import {
+  GAME_STATE,
+  PLAYER_CONFIG,
+  SHRINE_CHAPTERS,
+  STAGE_METADATA,
+  VIEWPORT
+} from "../config/constants.js";
 import { Player } from "../entities/Player.js";
 import { BackgroundRenderer } from "../graphics/BackgroundRenderer.js";
 import { HUDRenderer } from "../ui/HUDRenderer.js";
@@ -11,7 +17,7 @@ import { SaveManager } from "./SaveManager.js";
 
 /**
  * Primary game coordinator managing the fixed-timestep loop,
- * state transitions, menus, and death/victory sequences.
+ * state transitions, Attunement Shrine respawns/warping, menus, and death/victory sequences.
  */
 export class Game {
   constructor(canvas, viewportFrame) {
@@ -46,7 +52,8 @@ export class Game {
     this.runDeaths = 0;
     this.victoryDelayTimer = 0;
 
-    this.checkpointStage = null;
+    // Active Attunement Shrine respawn state (defaults to Shrine I on Stage 0)
+    this.checkpointStage = this.saveManager.data.lastShrineStage || 0;
     this.checkpointX = 0;
     this.checkpointY = 0;
 
@@ -60,12 +67,19 @@ export class Game {
     };
 
     // Preload background stage for title screen ambiance
-    this.level.load(this.saveManager.data.lastStagePlayed || 0);
+    this.level.load(this.checkpointStage, true, true);
 
     this.lastTime = performance.now();
     this.accumulator = 0;
 
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  bindCheckpoint(stageIndex, x, y) {
+    this.checkpointStage = stageIndex;
+    this.checkpointX = x;
+    this.checkpointY = y;
+    this.saveManager.unlockShrine(stageIndex);
   }
 
   applyCRTPreference() {
@@ -92,12 +106,12 @@ export class Game {
   }
 
   getTitleMenuItems() {
-    const lastStage = this.saveManager.data.lastStagePlayed || 0;
-    const meta = STAGE_METADATA[lastStage] || STAGE_METADATA[0];
+    const shrineStage = this.saveManager.data.lastShrineStage || 0;
+    const meta = STAGE_METADATA[shrineStage] || STAGE_METADATA[0];
     return [
-      `CONTINUE (CH.${meta.numeral})`,
+      `CONTINUE (SHRINE ${meta.numeral})`,
       "NEW JOURNEY",
-      "SELECT CHAPTER",
+      "WARP TO SHRINE",
       "CONTROLS & GUIDE",
       `AUDIO: ${this.sound.muted ? "MUTED" : "ON"}`
     ];
@@ -106,8 +120,8 @@ export class Game {
   getPauseMenuItems() {
     return [
       "RESUME GAME",
-      "RETRY STAGE",
-      "SELECT CHAPTER",
+      "RETURN TO LAST SHRINE",
+      "WARP TO SHRINE",
       `AUDIO: ${this.sound.muted ? "MUTED" : "ON"}`,
       `CRT SCANLINES: ${this.saveManager.data.crtEnabled ? "ON" : "OFF"}`,
       "RETURN TO TITLE"
@@ -117,16 +131,23 @@ export class Game {
   startNewJourney() {
     this.runFrames = 0;
     this.runDeaths = 0;
-    this.checkpointStage = null;
+    this.checkpointStage = 0;
+    this.saveManager.unlockShrine(0);
     this.player.soul = 0;
-    this.level.load(0, false);
+    this.level.load(0, true, true);
     this.state = GAME_STATE.PLAYING;
   }
 
   continueJourney() {
-    const stageIdx = this.saveManager.data.lastStagePlayed || 0;
-    this.level.load(stageIdx, false);
+    const shrineStage = this.saveManager.data.lastShrineStage || 0;
+    this.checkpointStage = shrineStage;
+    this.level.load(shrineStage, true, true);
     this.state = GAME_STATE.PLAYING;
+  }
+
+  respawnAtActiveShrine() {
+    const targetStage = this.checkpointStage !== null ? this.checkpointStage : 0;
+    this.level.load(targetStage, true, true);
   }
 
   onBossDefeated() {
@@ -177,14 +198,12 @@ export class Game {
       }
     }
 
-    // Respawn on the current stage (or active checkpoint shrine) rather than wiping progress
+    // Respawn back at the last attuned Shrine with full HP (Hollow Knight bench style!)
     if (ds.timer >= 86) {
       ds.active = false;
       ds.fadeAlpha = 1.0;
       this.sound.duckMusic = false;
-
-      const useCheckpoint = this.checkpointStage === this.level.currentIndex;
-      this.level.load(this.level.currentIndex, useCheckpoint);
+      this.respawnAtActiveShrine();
     }
   }
 
@@ -207,7 +226,7 @@ export class Game {
           this.startNewJourney();
         } else if (this.menuIndex === 2) {
           this.state = GAME_STATE.STAGE_SELECT;
-          this.menuIndex = this.saveManager.data.lastStagePlayed || 0;
+          this.menuIndex = 0;
         } else if (this.menuIndex === 3) {
           this.state = GAME_STATE.CONTROLS;
         } else if (this.menuIndex === 4) {
@@ -215,20 +234,20 @@ export class Game {
         }
       }
     } else if (this.state === GAME_STATE.STAGE_SELECT) {
-      const total = STAGE_METADATA.length;
+      const total = SHRINE_CHAPTERS.length;
       if (this.input.actionPressed("up")) {
         this.menuIndex = (this.menuIndex - 1 + total) % total;
         this.sound.playMenuMove();
       } else if (this.input.actionPressed("down")) {
         this.menuIndex = (this.menuIndex + 1) % total;
         this.sound.playMenuMove();
-      } else if (this.input.actionPressed("left") || this.input.actionPressed("right")) {
-        this.menuIndex = (this.menuIndex + 5) % total;
-        this.sound.playMenuMove();
       } else if (this.input.actionPressed("confirm")) {
-        if (this.menuIndex <= this.saveManager.data.highestStageUnlocked) {
+        const chosenShrine = SHRINE_CHAPTERS[this.menuIndex];
+        if (chosenShrine && this.saveManager.hasShrine(chosenShrine.stageIndex)) {
           this.sound.playMenuSelect();
-          this.level.load(this.menuIndex, false);
+          this.checkpointStage = chosenShrine.stageIndex;
+          this.saveManager.unlockShrine(chosenShrine.stageIndex);
+          this.level.load(chosenShrine.stageIndex, true, true);
           this.state = GAME_STATE.PLAYING;
         } else {
           this.sound.playHurt();
@@ -266,12 +285,11 @@ export class Game {
         if (this.menuIndex === 0) {
           this.state = GAME_STATE.PLAYING;
         } else if (this.menuIndex === 1) {
-          const useCheckpoint = this.checkpointStage === this.level.currentIndex;
-          this.level.load(this.level.currentIndex, useCheckpoint);
+          this.respawnAtActiveShrine();
           this.state = GAME_STATE.PLAYING;
         } else if (this.menuIndex === 2) {
           this.state = GAME_STATE.STAGE_SELECT;
-          this.menuIndex = this.level.currentIndex;
+          this.menuIndex = 0;
         } else if (this.menuIndex === 3) {
           this.toggleMute();
         } else if (this.menuIndex === 4) {
@@ -331,8 +349,7 @@ export class Game {
     }
 
     if (this.input.actionPressed("retry") && !this.deathSequence.active) {
-      const useCheckpoint = this.checkpointStage === this.level.currentIndex;
-      this.level.load(this.level.currentIndex, useCheckpoint);
+      this.respawnAtActiveShrine();
       this.input.endFrame();
       return;
     }
@@ -407,7 +424,7 @@ export class Game {
     }
 
     if (this.state === GAME_STATE.VICTORY) {
-      this.background.drawMotes(this.ctx, 9);
+      this.background.drawMotes(this.ctx, 11);
       this.hud.drawVictoryScreen(this.ctx);
       return;
     }
@@ -424,6 +441,7 @@ export class Game {
 
     this.background.drawMotes(this.ctx, this.level.currentIndex);
     this.hud.drawHUD(this.ctx);
+    this.particles.drawScreenSpace(this.ctx);
 
     if (this.deathSequence.fadeAlpha > 0) {
       this.ctx.fillStyle = `rgba(0, 0, 0, ${this.deathSequence.fadeAlpha.toFixed(2)})`;

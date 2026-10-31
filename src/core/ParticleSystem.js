@@ -2,8 +2,17 @@ import { VIEWPORT } from "../config/constants.js";
 import { PALETTE } from "../config/palette.js";
 import { drawPixelText } from "../graphics/PixelFont.js";
 
+const MINI_HEART = [
+  "0110110",
+  "1111111",
+  "1111111",
+  "0111110",
+  "0011100",
+  "0001000"
+];
+
 /**
- * Particle emitter, dash afterimage trail, and floating combat text system.
+ * Particle emitter, dash afterimage trail, flying HUD heal hearts, and floating combat text system.
  */
 export class ParticleSystem {
   constructor() {
@@ -11,6 +20,7 @@ export class ParticleSystem {
     this.ghosts = [];
     this.floatingTexts = [];
     this.shockwaves = [];
+    this.flyingHearts = [];
   }
 
   clear() {
@@ -18,6 +28,7 @@ export class ParticleSystem {
     this.ghosts.length = 0;
     this.floatingTexts.length = 0;
     this.shockwaves.length = 0;
+    this.flyingHearts.length = 0;
   }
 
   spawn(x, y, vx, vy, color, size, life, gravity = 0.08, drag = 0.94) {
@@ -97,6 +108,23 @@ export class ParticleSystem {
     });
   }
 
+  spawnFlyingHeart(startScreenX, startScreenY, targetScreenX, targetScreenY, onArrive) {
+    this.flyingHearts.push({
+      startX: startScreenX,
+      startY: startScreenY,
+      x: startScreenX,
+      y: startScreenY,
+      targetX: targetScreenX,
+      targetY: targetScreenY,
+      ctrlX: (startScreenX + targetScreenX) * 0.5 - 18,
+      ctrlY: Math.min(startScreenY, targetScreenY) - 28,
+      progress: 0,
+      duration: 28,
+      trail: [],
+      onArrive
+    });
+  }
+
   update() {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -125,6 +153,27 @@ export class ParticleSystem {
       ft.y -= 0.35;
       ft.life--;
       if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+    }
+
+    for (let i = this.flyingHearts.length - 1; i >= 0; i--) {
+      const fh = this.flyingHearts[i];
+      fh.progress++;
+      const t = Math.min(1, fh.progress / fh.duration);
+      // Ease-in-out cubic curve along quadratic bezier
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const inv = 1 - ease;
+      fh.x = inv * inv * fh.startX + 2 * inv * ease * fh.ctrlX + ease * ease * fh.targetX;
+      fh.y = inv * inv * fh.startY + 2 * inv * ease * fh.ctrlY + ease * ease * fh.targetY;
+      fh.trail.push({ x: fh.x, y: fh.y, life: 8 });
+      for (let j = fh.trail.length - 1; j >= 0; j--) {
+        fh.trail[j].life--;
+        if (fh.trail[j].life <= 0) fh.trail.splice(j, 1);
+      }
+
+      if (fh.progress >= fh.duration) {
+        if (fh.onArrive) fh.onArrive();
+        this.flyingHearts.splice(i, 1);
+      }
     }
   }
 
@@ -172,6 +221,29 @@ export class ParticleSystem {
     for (const ft of this.floatingTexts) {
       if (ft.life < 8 && ft.life % 2 === 0) continue;
       drawPixelText(ctx, ft.text, Math.round(ft.x), Math.round(ft.y), ft.color, PALETTE.textShadow);
+    }
+  }
+
+  drawScreenSpace(ctx) {
+    for (const fh of this.flyingHearts) {
+      for (const tr of fh.trail) {
+        ctx.fillStyle = tr.life > 4 ? PALETTE.white : PALETTE.soulCyan;
+        ctx.fillRect(Math.round(tr.x + 2), Math.round(tr.y + 2), 2, 2);
+      }
+
+      const hx = Math.round(fh.x);
+      const hy = Math.round(fh.y);
+      // Outer white/cyan glow around flying heart
+      ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+      ctx.fillRect(hx - 1, hy - 1, 9, 8);
+      for (let r = 0; r < MINI_HEART.length; r++) {
+        for (let c = 0; c < 7; c++) {
+          if (MINI_HEART[r][c] === "1") {
+            ctx.fillStyle = fh.progress % 4 < 2 ? PALETTE.white : PALETTE.playerHair;
+            ctx.fillRect(hx + c, hy + r, 1, 1);
+          }
+        }
+      }
     }
   }
 }

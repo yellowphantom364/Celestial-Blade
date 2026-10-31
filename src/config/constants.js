@@ -29,6 +29,8 @@ export const PLAYER_CONFIG = Object.freeze({
   SOUL_PER_KILL: 25,
   SOUL_WAVE_COST: 45,
   SOUL_HEAL_COST: 60,
+  FOCUS_HOLD_THRESHOLD: 10,
+  FOCUS_CHANNEL_FRAMES: 48,
   MAX_RUN_SPEED: 1.88,
   GROUND_ACCEL: 0.46,
   AIR_ACCEL: 0.34,
@@ -51,10 +53,34 @@ export const PLAYER_CONFIG = Object.freeze({
   DASH_COOLDOWN: 14,
   ATTACK_FRAMES: 8,
   ATTACK_COOLDOWN: 10,
-  COMBO_WINDOW_FRAMES: 26,
+  COMBO_WINDOW_FRAMES: 28,
   INVULN_HURT_FRAMES: 36,
   INVULN_PARRY_FRAMES: 14
 });
+
+export const SHRINE_CHAPTERS = Object.freeze([
+  {
+    id: "shrine_0",
+    stageIndex: 0,
+    numeral: "I",
+    name: "SILENT PRECIPICE SHRINE",
+    subtitle: "AWAKENING ALTAR"
+  },
+  {
+    id: "shrine_4",
+    stageIndex: 4,
+    numeral: "V",
+    name: "CRIMSON BASTION SHRINE",
+    subtitle: "CITADEL KEEP ALTAR"
+  },
+  {
+    id: "shrine_10",
+    stageIndex: 10,
+    numeral: "XI",
+    name: "GRAND LABYRINTH SHRINE",
+    subtitle: "SANCTUM NEXUS ALTAR"
+  }
+]);
 
 export const STAGE_METADATA = Object.freeze([
   {
@@ -62,7 +88,8 @@ export const STAGE_METADATA = Object.freeze([
     numeral: "I",
     title: "SILENT PRECIPICE",
     subtitle: "AWAKENING IN THE MIST",
-    biome: "precipice"
+    biome: "precipice",
+    hasShrine: true
   },
   {
     index: 1,
@@ -89,8 +116,9 @@ export const STAGE_METADATA = Object.freeze([
     index: 4,
     numeral: "V",
     title: "CRIMSON BASTION",
-    subtitle: "THE IRON VANGUARD",
-    biome: "spire"
+    subtitle: "THE IRON CITADEL",
+    biome: "spire",
+    hasShrine: true
   },
   {
     index: 5,
@@ -102,27 +130,42 @@ export const STAGE_METADATA = Object.freeze([
   {
     index: 6,
     numeral: "VII",
+    title: "MANTIS CLOISTER",
+    subtitle: "BLADES OF THE DUELISTS",
+    biome: "spire"
+  },
+  {
+    index: 7,
+    numeral: "VIII",
     title: "TWIN CONDUITS",
     subtitle: "TRIAL OF MOMENTUM",
     biome: "labyrinth"
   },
   {
-    index: 7,
-    numeral: "VIII",
-    title: "SANCTUM THRESHOLD",
-    subtitle: "GAUNTLET OF SHADOWS",
-    biome: "labyrinth"
-  },
-  {
     index: 8,
     numeral: "IX",
-    title: "THE GRAND LABYRINTH",
-    subtitle: "THREE SEALS OF UNION",
+    title: "ASTRAL OBSERVATORY",
+    subtitle: "SCHOLARS OF THE VOID",
     biome: "labyrinth"
   },
   {
     index: 9,
     numeral: "X",
+    title: "SANCTUM THRESHOLD",
+    subtitle: "GAUNTLET OF SHADOWS",
+    biome: "labyrinth"
+  },
+  {
+    index: 10,
+    numeral: "XI",
+    title: "THE GRAND LABYRINTH",
+    subtitle: "THREE SEALS OF UNION",
+    biome: "labyrinth",
+    hasShrine: true
+  },
+  {
+    index: 11,
+    numeral: "XII",
     title: "ECLIPSE SANCTUM",
     subtitle: "SERAPH VAEL, THE FALLEN WARDEN",
     biome: "eclipse"

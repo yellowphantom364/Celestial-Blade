@@ -1,6 +1,6 @@
 /**
  * Celestial Blade - Compiled Standalone Bundle
- * Auto-generated from src/ ES6 modules.
+ * Auto-generated from src/ ES6 modules via `npm run build`.
  */
 (() => {
   "use strict";
@@ -34,6 +34,8 @@
     SOUL_PER_KILL: 25,
     SOUL_WAVE_COST: 45,
     SOUL_HEAL_COST: 60,
+    FOCUS_HOLD_THRESHOLD: 10,
+    FOCUS_CHANNEL_FRAMES: 48,
     MAX_RUN_SPEED: 1.88,
     GROUND_ACCEL: 0.46,
     AIR_ACCEL: 0.34,
@@ -56,17 +58,41 @@
     DASH_COOLDOWN: 14,
     ATTACK_FRAMES: 8,
     ATTACK_COOLDOWN: 10,
-    COMBO_WINDOW_FRAMES: 26,
+    COMBO_WINDOW_FRAMES: 28,
     INVULN_HURT_FRAMES: 36,
     INVULN_PARRY_FRAMES: 14
   });
+  const SHRINE_CHAPTERS = Object.freeze([
+    {
+      id: "shrine_0",
+      stageIndex: 0,
+      numeral: "I",
+      name: "SILENT PRECIPICE SHRINE",
+      subtitle: "AWAKENING ALTAR"
+    },
+    {
+      id: "shrine_4",
+      stageIndex: 4,
+      numeral: "V",
+      name: "CRIMSON BASTION SHRINE",
+      subtitle: "CITADEL KEEP ALTAR"
+    },
+    {
+      id: "shrine_10",
+      stageIndex: 10,
+      numeral: "XI",
+      name: "GRAND LABYRINTH SHRINE",
+      subtitle: "SANCTUM NEXUS ALTAR"
+    }
+  ]);
   const STAGE_METADATA = Object.freeze([
     {
       index: 0,
       numeral: "I",
       title: "SILENT PRECIPICE",
       subtitle: "AWAKENING IN THE MIST",
-      biome: "precipice"
+      biome: "precipice",
+      hasShrine: true
     },
     {
       index: 1,
@@ -93,8 +119,9 @@
       index: 4,
       numeral: "V",
       title: "CRIMSON BASTION",
-      subtitle: "THE IRON VANGUARD",
-      biome: "spire"
+      subtitle: "THE IRON CITADEL",
+      biome: "spire",
+      hasShrine: true
     },
     {
       index: 5,
@@ -106,27 +133,42 @@
     {
       index: 6,
       numeral: "VII",
+      title: "MANTIS CLOISTER",
+      subtitle: "BLADES OF THE DUELISTS",
+      biome: "spire"
+    },
+    {
+      index: 7,
+      numeral: "VIII",
       title: "TWIN CONDUITS",
       subtitle: "TRIAL OF MOMENTUM",
       biome: "labyrinth"
     },
     {
-      index: 7,
-      numeral: "VIII",
-      title: "SANCTUM THRESHOLD",
-      subtitle: "GAUNTLET OF SHADOWS",
-      biome: "labyrinth"
-    },
-    {
       index: 8,
       numeral: "IX",
-      title: "THE GRAND LABYRINTH",
-      subtitle: "THREE SEALS OF UNION",
+      title: "ASTRAL OBSERVATORY",
+      subtitle: "SCHOLARS OF THE VOID",
       biome: "labyrinth"
     },
     {
       index: 9,
       numeral: "X",
+      title: "SANCTUM THRESHOLD",
+      subtitle: "GAUNTLET OF SHADOWS",
+      biome: "labyrinth"
+    },
+    {
+      index: 10,
+      numeral: "XI",
+      title: "THE GRAND LABYRINTH",
+      subtitle: "THREE SEALS OF UNION",
+      biome: "labyrinth",
+      hasShrine: true
+    },
+    {
+      index: 11,
+      numeral: "XII",
       title: "ECLIPSE SANCTUM",
       subtitle: "SERAPH VAEL, THE FALLEN WARDEN",
       biome: "eclipse"
@@ -352,11 +394,13 @@
   }
 
   // --- Module: src/core/SaveManager.js ---
-  const STORAGE_KEY = "celestial_blade_save_v1";
+  const STORAGE_KEY = "celestial_blade_save_v2";
   
   const DEFAULT_SAVE = {
     highestStageUnlocked: 0,
     lastStagePlayed: 0,
+    lastShrineStage: 0,
+    unlockedShrines: [0],
     bestTimeFrames: null,
     lowestDeaths: null,
     relicsFound: [],
@@ -367,7 +411,7 @@
   };
   
   /**
-   * Manages persistent player progress and preferences in localStorage.
+   * Manages persistent player progress, attuned shrines, and preferences in localStorage.
    */
   class SaveManager {
     constructor() {
@@ -376,16 +420,23 @@
   
     load() {
       try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (!raw) return { ...DEFAULT_SAVE, relicsFound: [] };
+        const raw =
+          window.localStorage.getItem(STORAGE_KEY) ||
+          window.localStorage.getItem("celestial_blade_save_v1");
+        if (!raw) return { ...DEFAULT_SAVE, relicsFound: [], unlockedShrines: [0] };
         const parsed = JSON.parse(raw);
+        const unlockedShrines = Array.isArray(parsed.unlockedShrines)
+          ? parsed.unlockedShrines
+          : [0];
+        if (!unlockedShrines.includes(0)) unlockedShrines.unshift(0);
         return {
           ...DEFAULT_SAVE,
           ...parsed,
-          relicsFound: Array.isArray(parsed.relicsFound) ? parsed.relicsFound : []
+          relicsFound: Array.isArray(parsed.relicsFound) ? parsed.relicsFound : [],
+          unlockedShrines
         };
       } catch {
-        return { ...DEFAULT_SAVE, relicsFound: [] };
+        return { ...DEFAULT_SAVE, relicsFound: [], unlockedShrines: [0] };
       }
     }
   
@@ -403,6 +454,19 @@
       }
       this.data.lastStagePlayed = stageIndex;
       this.save();
+    }
+  
+    unlockShrine(stageIndex) {
+      if (!this.data.unlockedShrines.includes(stageIndex)) {
+        this.data.unlockedShrines.push(stageIndex);
+        this.data.unlockedShrines.sort((a, b) => a - b);
+      }
+      this.data.lastShrineStage = stageIndex;
+      this.save();
+    }
+  
+    hasShrine(stageIndex) {
+      return this.data.unlockedShrines.includes(stageIndex);
     }
   
     collectRelic(relicId) {
@@ -435,7 +499,7 @@
       if (this.data.lowestDeaths === null || runDeaths < this.data.lowestDeaths) {
         this.data.lowestDeaths = runDeaths;
       }
-      this.data.highestStageUnlocked = 9;
+      this.data.highestStageUnlocked = 11;
       this.save();
     }
   
@@ -444,6 +508,7 @@
       this.data = {
         ...DEFAULT_SAVE,
         relicsFound: [],
+        unlockedShrines: [0],
         muted,
         crtEnabled
       };
@@ -759,8 +824,17 @@
   }
 
   // --- Module: src/core/ParticleSystem.js ---
+  const MINI_HEART = [
+    "0110110",
+    "1111111",
+    "1111111",
+    "0111110",
+    "0011100",
+    "0001000"
+  ];
+  
   /**
-   * Particle emitter, dash afterimage trail, and floating combat text system.
+   * Particle emitter, dash afterimage trail, flying HUD heal hearts, and floating combat text system.
    */
   class ParticleSystem {
     constructor() {
@@ -768,6 +842,7 @@
       this.ghosts = [];
       this.floatingTexts = [];
       this.shockwaves = [];
+      this.flyingHearts = [];
     }
   
     clear() {
@@ -775,6 +850,7 @@
       this.ghosts.length = 0;
       this.floatingTexts.length = 0;
       this.shockwaves.length = 0;
+      this.flyingHearts.length = 0;
     }
   
     spawn(x, y, vx, vy, color, size, life, gravity = 0.08, drag = 0.94) {
@@ -854,6 +930,23 @@
       });
     }
   
+    spawnFlyingHeart(startScreenX, startScreenY, targetScreenX, targetScreenY, onArrive) {
+      this.flyingHearts.push({
+        startX: startScreenX,
+        startY: startScreenY,
+        x: startScreenX,
+        y: startScreenY,
+        targetX: targetScreenX,
+        targetY: targetScreenY,
+        ctrlX: (startScreenX + targetScreenX) * 0.5 - 18,
+        ctrlY: Math.min(startScreenY, targetScreenY) - 28,
+        progress: 0,
+        duration: 28,
+        trail: [],
+        onArrive
+      });
+    }
+  
     update() {
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const p = this.particles[i];
@@ -882,6 +975,27 @@
         ft.y -= 0.35;
         ft.life--;
         if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+      }
+  
+      for (let i = this.flyingHearts.length - 1; i >= 0; i--) {
+        const fh = this.flyingHearts[i];
+        fh.progress++;
+        const t = Math.min(1, fh.progress / fh.duration);
+        // Ease-in-out cubic curve along quadratic bezier
+        const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const inv = 1 - ease;
+        fh.x = inv * inv * fh.startX + 2 * inv * ease * fh.ctrlX + ease * ease * fh.targetX;
+        fh.y = inv * inv * fh.startY + 2 * inv * ease * fh.ctrlY + ease * ease * fh.targetY;
+        fh.trail.push({ x: fh.x, y: fh.y, life: 8 });
+        for (let j = fh.trail.length - 1; j >= 0; j--) {
+          fh.trail[j].life--;
+          if (fh.trail[j].life <= 0) fh.trail.splice(j, 1);
+        }
+  
+        if (fh.progress >= fh.duration) {
+          if (fh.onArrive) fh.onArrive();
+          this.flyingHearts.splice(i, 1);
+        }
       }
     }
   
@@ -931,46 +1045,114 @@
         drawPixelText(ctx, ft.text, Math.round(ft.x), Math.round(ft.y), ft.color, PALETTE.textShadow);
       }
     }
+  
+    drawScreenSpace(ctx) {
+      for (const fh of this.flyingHearts) {
+        for (const tr of fh.trail) {
+          ctx.fillStyle = tr.life > 4 ? PALETTE.white : PALETTE.soulCyan;
+          ctx.fillRect(Math.round(tr.x + 2), Math.round(tr.y + 2), 2, 2);
+        }
+  
+        const hx = Math.round(fh.x);
+        const hy = Math.round(fh.y);
+        // Outer white/cyan glow around flying heart
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+        ctx.fillRect(hx - 1, hy - 1, 9, 8);
+        for (let r = 0; r < MINI_HEART.length; r++) {
+          for (let c = 0; c < 7; c++) {
+            if (MINI_HEART[r][c] === "1") {
+              ctx.fillStyle = fh.progress % 4 < 2 ? PALETTE.white : PALETTE.playerHair;
+              ctx.fillRect(hx + c, hy + r, 1, 1);
+            }
+          }
+        }
+      }
+    }
   }
 
   // --- Module: src/audio/SoundEngine.js ---
   /**
-   * Procedural Web Audio synthesizer for chiptune soundtracks and combat SFX.
+   * Procedural Web Audio synthesizer featuring multi-layered dark-synth / chiptune
+   * "tuff beats" (punchy 808/kick drums, crispy snare, 16th-note hi-hats, sub-basslines,
+   * chord pads, and arpeggiated leads) plus combat & Soul Focus SFX.
    */
   
   const TRACKS = Object.freeze({
     exploration: {
-      stepDuration: 0.18,
+      stepDuration: 0.145,
       melody: [
-        329.63, 392.00, 493.88, 659.25, 587.33, 493.88, 392.00, 493.88,
-        293.66, 369.99, 440.00, 587.33, 523.25, 440.00, 369.99, 440.00,
-        261.63, 329.63, 392.00, 523.25, 493.88, 392.00, 329.63, 392.00,
-        246.94, 329.63, 392.00, 493.88, 587.33, 493.88, 392.00, 329.63
+        329.63, 0, 392.00, 493.88, 659.25, 0, 587.33, 493.88,
+        392.00, 493.88, 587.33, 0, 493.88, 392.00, 329.63, 293.66,
+        261.63, 0, 329.63, 392.00, 523.25, 0, 493.88, 392.00,
+        293.66, 369.99, 440.00, 587.33, 523.25, 493.88, 392.00, 329.63
       ],
-      bass: [82.41, 82.41, 73.42, 73.42, 65.41, 65.41, 61.74, 73.42],
-      leadType: "triangle"
+      bass: [
+        82.41, 82.41, 164.81, 82.41, 73.42, 73.42, 146.83, 73.42,
+        65.41, 65.41, 130.81, 65.41, 61.74, 61.74, 73.42, 82.41
+      ],
+      drums: [
+        "K", "H", "H", "K", "S", "H", "K", "H",
+        "K", "K", "H", "H", "S", "H", "K", "S"
+      ],
+      leadType: "triangle",
+      bassType: "sawtooth"
+    },
+    bastion: {
+      stepDuration: 0.13,
+      melody: [
+        293.66, 349.23, 440.00, 0, 587.33, 523.25, 440.00, 349.23,
+        261.63, 329.63, 392.00, 0, 523.25, 493.88, 392.00, 329.63,
+        233.08, 293.66, 349.23, 466.16, 587.33, 466.16, 349.23, 293.66,
+        220.00, 277.18, 329.63, 440.00, 554.37, 659.25, 554.37, 440.00
+      ],
+      bass: [
+        73.42, 73.42, 146.83, 73.42, 65.41, 65.41, 130.81, 65.41,
+        58.27, 58.27, 116.54, 58.27, 55.00, 55.00, 110.00, 69.30
+      ],
+      drums: [
+        "K", "H", "K", "H", "S", "H", "K", "K",
+        "K", "H", "K", "H", "S", "K", "S", "H"
+      ],
+      leadType: "square",
+      bassType: "sawtooth"
     },
     labyrinth: {
-      stepDuration: 0.16,
+      stepDuration: 0.135,
       melody: [
-        246.94, 293.66, 369.99, 493.88, 440.00, 369.99, 293.66, 329.63,
-        220.00, 261.63, 329.63, 440.00, 392.00, 329.63, 261.63, 293.66,
-        196.00, 246.94, 293.66, 392.00, 369.99, 293.66, 246.94, 220.00,
-        185.00, 220.00, 293.66, 369.99, 440.00, 369.99, 293.66, 246.94
+        246.94, 293.66, 369.99, 493.88, 0, 440.00, 369.99, 293.66,
+        220.00, 261.63, 329.63, 440.00, 0, 392.00, 329.63, 261.63,
+        196.00, 246.94, 293.66, 392.00, 493.88, 392.00, 293.66, 246.94,
+        185.00, 246.94, 311.13, 369.99, 493.88, 440.00, 369.99, 311.13
       ],
-      bass: [61.74, 61.74, 55.00, 55.00, 49.00, 49.00, 46.25, 55.00],
-      leadType: "sine"
+      bass: [
+        61.74, 123.47, 61.74, 61.74, 55.00, 110.00, 55.00, 55.00,
+        49.00, 98.00, 49.00, 49.00, 46.25, 92.50, 55.00, 61.74
+      ],
+      drums: [
+        "K", "H", "H", "K", "S", "H", "K", "H",
+        "K", "H", "K", "K", "S", "H", "H", "S"
+      ],
+      leadType: "triangle",
+      bassType: "sawtooth"
     },
     boss: {
-      stepDuration: 0.125,
+      stepDuration: 0.112,
       melody: [
         329.63, 329.63, 392.00, 493.88, 523.25, 493.88, 392.00, 329.63,
         369.99, 369.99, 440.00, 554.37, 587.33, 554.37, 440.00, 369.99,
         392.00, 493.88, 587.33, 659.25, 783.99, 659.25, 587.33, 493.88,
-        311.13, 392.00, 466.16, 622.25, 587.33, 493.88, 392.00, 311.13
+        311.13, 392.00, 466.16, 622.25, 740.00, 622.25, 493.88, 392.00
       ],
-      bass: [82.41, 82.41, 92.50, 92.50, 98.00, 98.00, 77.78, 82.41],
-      leadType: "sawtooth"
+      bass: [
+        82.41, 82.41, 164.81, 82.41, 92.50, 92.50, 185.00, 92.50,
+        98.00, 98.00, 196.00, 98.00, 77.78, 77.78, 155.56, 82.41
+      ],
+      drums: [
+        "K", "H", "K", "H", "S", "K", "H", "K",
+        "K", "K", "H", "K", "S", "H", "S", "K"
+      ],
+      leadType: "sawtooth",
+      bassType: "sawtooth"
     }
   });
   class SoundEngine {
@@ -1026,6 +1208,68 @@
       }
     }
   
+    triggerDrum(type, now) {
+      if (!this.ctx || !this.masterGain) return;
+      if (type === "K") {
+        // Punchy 808 / Synth Kick Drum
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(135, now);
+        osc.frequency.exponentialRampToValueAtTime(34, now + 0.11);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.12);
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (type === "S") {
+        // Crispy Synth Snare (body + filtered noise snap)
+        const osc = this.ctx.createOscillator();
+        const oGain = this.ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(195, now);
+        osc.frequency.exponentialRampToValueAtTime(85, now + 0.07);
+        oGain.gain.setValueAtTime(0.09, now);
+        oGain.gain.exponentialRampToValueAtTime(0.004, now + 0.075);
+        osc.connect(oGain);
+        oGain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.075);
+  
+        if (this.noiseBuffer) {
+          const noise = this.ctx.createBufferSource();
+          noise.buffer = this.noiseBuffer;
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = "highpass";
+          filter.frequency.setValueAtTime(1100, now);
+          const nGain = this.ctx.createGain();
+          nGain.gain.setValueAtTime(0.085, now);
+          nGain.gain.exponentialRampToValueAtTime(0.003, now + 0.09);
+          noise.connect(filter);
+          filter.connect(nGain);
+          nGain.connect(this.masterGain);
+          noise.start(now);
+          noise.stop(now + 0.09);
+        }
+      } else if (type === "H" && this.noiseBuffer) {
+        // Crisp 16th-note Hi-Hat
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = this.noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = "highpass";
+        filter.frequency.setValueAtTime(5200, now);
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.032, now);
+        nGain.gain.exponentialRampToValueAtTime(0.002, now + 0.035);
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(this.masterGain);
+        noise.start(now);
+        noise.stop(now + 0.035);
+      }
+    }
+  
     startMusicLoop() {
       this.musicStarted = true;
       if (this.musicTimer) {
@@ -1044,33 +1288,51 @@
         const now = this.ctx.currentTime;
         const step = this.musicStep++;
   
+        // 1. Percussion groove (Kick, Snare, Hats)
+        const drumHit = activeTrack.drums[step % activeTrack.drums.length];
+        if (drumHit) {
+          this.triggerDrum(drumHit, now);
+        }
+  
+        // 2. Driving filtered sub-bassline on 8th notes
+        if (step % 2 === 0) {
+          const bassFreq = activeTrack.bass[Math.floor(step / 2) % activeTrack.bass.length];
+          if (bassFreq) {
+            const bOsc = this.ctx.createOscillator();
+            const bFilter = this.ctx.createBiquadFilter();
+            const bGain = this.ctx.createGain();
+            bOsc.type = activeTrack.bassType || "sawtooth";
+            bOsc.frequency.setValueAtTime(bassFreq, now);
+            bFilter.type = "lowpass";
+            bFilter.frequency.setValueAtTime(420, now);
+            bFilter.frequency.exponentialRampToValueAtTime(140, now + dur * 1.8);
+            bGain.gain.setValueAtTime(0.075, now);
+            bGain.gain.exponentialRampToValueAtTime(0.005, now + dur * 1.9);
+            bOsc.connect(bFilter);
+            bFilter.connect(bGain);
+            bGain.connect(this.masterGain);
+            bOsc.start(now);
+            bOsc.stop(now + dur * 1.95);
+          }
+        }
+  
+        // 3. Arpeggiated synth lead + detuned shimmer
         const leadFreq = activeTrack.melody[step % activeTrack.melody.length];
-        if (leadFreq) {
+        if (leadFreq && leadFreq > 0) {
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
           osc.type = activeTrack.leadType;
           osc.frequency.setValueAtTime(leadFreq, now);
-          const peakGain = activeTrack.leadType === "sawtooth" ? 0.022 : 0.035;
+          const peakGain =
+            activeTrack.leadType === "sawtooth" || activeTrack.leadType === "square"
+              ? 0.026
+              : 0.04;
           gain.gain.setValueAtTime(peakGain, now);
-          gain.gain.exponentialRampToValueAtTime(0.002, now + dur * 0.9);
+          gain.gain.exponentialRampToValueAtTime(0.002, now + dur * 0.92);
           osc.connect(gain);
           gain.connect(this.masterGain);
           osc.start(now);
-          osc.stop(now + dur * 0.95);
-        }
-  
-        if (step % 4 === 0) {
-          const bassFreq = activeTrack.bass[Math.floor(step / 4) % activeTrack.bass.length];
-          const bOsc = this.ctx.createOscillator();
-          const bGain = this.ctx.createGain();
-          bOsc.type = "sine";
-          bOsc.frequency.setValueAtTime(bassFreq, now);
-          bGain.gain.setValueAtTime(0.055, now);
-          bGain.gain.exponentialRampToValueAtTime(0.004, now + dur * 3.8);
-          bOsc.connect(bGain);
-          bGain.connect(this.masterGain);
-          bOsc.start(now);
-          bOsc.stop(now + dur * 3.9);
+          osc.stop(now + dur * 0.96);
         }
       }, stepDuration * 1000);
     }
@@ -1181,15 +1443,30 @@
       noise.buffer = this.noiseBuffer;
       const filter = this.ctx.createBiquadFilter();
       filter.type = "highpass";
-      filter.frequency.setValueAtTime(850 + comboStep * 220, now);
+      filter.frequency.setValueAtTime(850 + comboStep * 260, now);
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.14 + comboStep * 0.03, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.075);
+      gain.gain.setValueAtTime(0.15 + comboStep * 0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
       noise.connect(filter);
       filter.connect(gain);
       gain.connect(this.masterGain);
       noise.start(now);
-      noise.stop(now + 0.075);
+      noise.stop(now + 0.08);
+  
+      // Extra metallic resonance on 3rd-hit Solar Finisher
+      if (comboStep === 2) {
+        const osc = this.ctx.createOscillator();
+        const oGain = this.ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(580, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.11);
+        oGain.gain.setValueAtTime(0.12, now);
+        oGain.gain.exponentialRampToValueAtTime(0.005, now + 0.11);
+        osc.connect(oGain);
+        oGain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.11);
+      }
     }
   
     playHit(isFinisher = false) {
@@ -1199,9 +1476,9 @@
       const osc = this.ctx.createOscillator();
       const oscGain = this.ctx.createGain();
       osc.type = "triangle";
-      osc.frequency.setValueAtTime(isFinisher ? 420 : 320, now);
+      osc.frequency.setValueAtTime(isFinisher ? 440 : 320, now);
       osc.frequency.exponentialRampToValueAtTime(45, now + 0.095);
-      oscGain.gain.setValueAtTime(isFinisher ? 0.42 : 0.34, now);
+      oscGain.gain.setValueAtTime(isFinisher ? 0.44 : 0.34, now);
       oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.095);
       osc.connect(oscGain);
       oscGain.connect(this.masterGain);
@@ -1240,6 +1517,23 @@
       osc.stop(now + 0.18);
     }
   
+    playFocusTick(progressRatio = 0) {
+      if (!this.canPlay()) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      const baseFreq = 320 + progressRatio * 440;
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.12, now + 0.07);
+      gain.gain.setValueAtTime(0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.004, now + 0.075);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.075);
+    }
+  
     playHeal() {
       if (!this.canPlay()) return;
       const notes = [523.25, 659.25, 783.99, 1046.5];
@@ -1249,12 +1543,12 @@
         const gain = this.ctx.createGain();
         osc.type = "sine";
         osc.frequency.setValueAtTime(freq, now);
-        gain.gain.setValueAtTime(0.16, now);
-        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.22);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.24);
         osc.connect(gain);
         gain.connect(this.masterGain);
         osc.start(now);
-        osc.stop(now + 0.22);
+        osc.stop(now + 0.24);
       });
     }
   
@@ -1448,11 +1742,11 @@
   // --- Module: src/graphics/BackgroundRenderer.js ---
   /**
    * Multi-layer parallax background renderer with biome palettes,
-   * celestial moon/eclipse, stepped peaks, ruined pillars, and drifting motes.
+   * crisp circular pixel sun/moon/eclipse, stepped peaks, ruined pillars, and drifting motes.
    */
   class BackgroundRenderer {
     constructor() {
-      this.stars = Array.from({ length: 42 }, () => ({
+      this.stars = Array.from({ length: 48 }, () => ({
         x: Math.floor(Math.random() * VIEWPORT.WIDTH),
         y: Math.floor(Math.random() * (VIEWPORT.HEIGHT - 36)),
         size: Math.random() > 0.82 ? 2 : 1,
@@ -1483,6 +1777,15 @@
       }
     }
   
+    drawPixelCircle(ctx, cx, cy, r, color) {
+      ctx.fillStyle = color;
+      const rSq = r * r;
+      for (let dy = -r; dy <= r; dy++) {
+        const span = Math.floor(Math.sqrt(Math.max(0, rSq - dy * dy)));
+        ctx.fillRect(Math.round(cx - span), Math.round(cy + dy), span * 2 + 1, 1);
+      }
+    }
+  
     drawSteppedPeak(ctx, baseX, peakY, halfWidth, stepSize, color) {
       ctx.fillStyle = color;
       const totalWidth = halfWidth * 2;
@@ -1496,29 +1799,75 @@
       }
     }
   
-    drawCelestialBody(ctx, theme, isEclipse) {
-      const mx = 252;
+    drawCelestialBody(ctx, theme, biome) {
+      const mx = 250;
       const my = 34;
+      const pulse = Math.sin(this.tick * 0.05) * 1.2;
   
-      // Outer atmospheric halo
-      ctx.fillStyle = theme.moonGlow;
-      ctx.fillRect(mx - 18, my - 18, 36, 36);
-      ctx.fillRect(mx - 14, my - 14, 28, 28);
+      // Multi-layered soft circular halo
+      this.drawPixelCircle(ctx, mx, my, Math.round(23 + pulse), theme.moonGlow);
+      this.drawPixelCircle(ctx, mx, my, Math.round(17 + pulse * 0.5), theme.moonGlow);
   
-      if (isEclipse) {
-        // Blood-gold solar eclipse corona
-        ctx.fillStyle = PALETTE.swordGlow;
-        ctx.fillRect(mx - 9, my - 9, 18, 18);
-        ctx.fillStyle = theme.moonColor;
-        ctx.fillRect(mx - 8, my - 8, 16, 16);
-        ctx.fillStyle = theme.skyTop;
-        ctx.fillRect(mx - 6, my - 6, 12, 12);
+      if (biome === "eclipse") {
+        // Total Solar Eclipse: Blazing crimson/gold corona + solar flares + pitch-black umbral core
+        for (let i = 0; i < 8; i++) {
+          const angle = (Math.PI * 2 * i) / 8 + this.tick * 0.01;
+          const rayLen = (i % 2 === 0 ? 18 : 15) + Math.sin(this.tick * 0.08 + i) * 2;
+          const rx = Math.round(mx + Math.cos(angle) * rayLen);
+          const ry = Math.round(my + Math.sin(angle) * rayLen);
+          ctx.fillStyle = i % 2 === 0 ? PALETTE.bossCrimson : PALETTE.swordGlow;
+          ctx.fillRect(rx - 1, ry - 1, 2, 2);
+        }
+        this.drawPixelCircle(ctx, mx, my, 13, PALETTE.bossCrimson);
+        this.drawPixelCircle(ctx, mx, my, 11, PALETTE.swordGlow);
+        this.drawPixelCircle(ctx, mx, my, 10, PALETTE.white);
+        this.drawPixelCircle(ctx, mx, my, 8, "#08040b");
+      } else if (biome === "spire") {
+        // Astral Golden Sun / Amber Full Moon with solar crown & warm surface craters
+        this.drawPixelCircle(ctx, mx, my, 12, "rgba(254, 211, 48, 0.35)");
+        this.drawPixelCircle(ctx, mx, my, 10, PALETTE.swordGlow);
+        this.drawPixelCircle(ctx, mx - 1, my - 1, 8, PALETTE.white);
+        // Subtle solar surface texture
+        ctx.fillStyle = PALETTE.swordCombo;
+        ctx.fillRect(mx + 2, my + 2, 3, 2);
+        ctx.fillRect(mx - 4, my + 3, 2, 2);
+        ctx.fillRect(mx + 3, my - 3, 2, 2);
       } else {
-        // Crisp pixel moon with crescent shadow
-        ctx.fillStyle = theme.moonColor;
-        ctx.fillRect(mx - 7, my - 7, 14, 14);
-        ctx.fillStyle = theme.skyTop;
-        ctx.fillRect(mx - 3, my - 6, 8, 10);
+        // Per-pixel Crescent Moon with Earthshine (no square cutout!)
+        const r = 10;
+        const shadowOffsetX = 4.2;
+        const shadowOffsetY = -2.2;
+        const shadowR = 8.8;
+  
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            const dSq = dx * dx + dy * dy;
+            if (dSq > r * r) continue;
+  
+            const sdx = dx - shadowOffsetX;
+            const sdy = dy - shadowOffsetY;
+            const inShadow = sdx * sdx + sdy * sdy <= shadowR * shadowR;
+  
+            if (inShadow) {
+              // Subtle dark earthshine on the unlit lunar hemisphere
+              ctx.fillStyle = biome === "labyrinth" ? "#16233b" : "#1c2442";
+              ctx.fillRect(mx + dx, my + dy, 1, 1);
+            } else {
+              // Lit crescent surface with subtle crater shading
+              const isCrater =
+                (dx === -4 && (dy === 1 || dy === 2)) ||
+                (dx === -3 && dy === 2) ||
+                (dx === -2 && dy === -4);
+              const isRim = dSq >= (r - 1.2) * (r - 1.2);
+              ctx.fillStyle = isCrater
+                ? PALETTE.textSubtle
+                : isRim
+                  ? PALETTE.white
+                  : theme.moonColor;
+              ctx.fillRect(mx + dx, my + dy, 1, 1);
+            }
+          }
+        }
       }
     }
   
@@ -1539,36 +1888,41 @@
       const theme = this.getTheme(levelIndex);
       const meta = STAGE_METADATA[levelIndex] || STAGE_METADATA[0];
   
-      // Two-tone stepped sky backdrop
+      // Multi-band atmospheric sky gradient
       ctx.fillStyle = theme.skyTop;
       ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
       ctx.fillStyle = theme.skyBottom;
       ctx.fillRect(0, Math.floor(VIEWPORT.HEIGHT * 0.45), VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
   
-      // Stars
+      // Stars (skip drawing inside the celestial disc radius so stars never clip through the moon)
+      const mx = 250;
+      const my = 34;
       for (const s of this.stars) {
+        const dx = s.x - mx;
+        const dy = s.y - my;
+        if (dx * dx + dy * dy <= 14 * 14) continue;
         const alpha = 0.3 + 0.5 * Math.sin(this.tick * 0.04 + s.blinkOffset);
         ctx.fillStyle = `rgba(226, 232, 240, ${alpha.toFixed(2)})`;
         ctx.fillRect(s.x, s.y, s.size, s.size);
       }
   
-      // Moon or Eclipse
-      this.drawCelestialBody(ctx, theme, meta.biome === "eclipse");
+      // Crisp Celestial Body (Crescent Moon, Solar Crown, or Total Eclipse)
+      this.drawCelestialBody(ctx, theme, meta.biome);
   
       // Far mountain range
       const parallax1 = Math.floor((cameraX * 0.08 + levelIndex * 20) / 2) * 2;
       for (let i = -1; i < 6; i++) {
-        const mx = i * 72 - (parallax1 % 72);
+        const peakX = i * 72 - (parallax1 % 72);
         const peakY = 62 + (Math.abs(i) % 2) * 16;
-        this.drawSteppedPeak(ctx, mx, peakY, 36, 4, theme.farPeak);
+        this.drawSteppedPeak(ctx, peakX, peakY, 36, 4, theme.farPeak);
       }
   
       // Mid mountain range
       const parallax2 = Math.floor((cameraX * 0.16 + levelIndex * 40) / 2) * 2;
       for (let i = -1; i < 8; i++) {
-        const mx = i * 52 - (parallax2 % 52);
+        const peakX = i * 52 - (parallax2 % 52);
         const peakY = 96 + (Math.abs(i) % 3) * 8;
-        this.drawSteppedPeak(ctx, mx, peakY, 26, 2, theme.midPeak);
+        this.drawSteppedPeak(ctx, peakX, peakY, 26, 2, theme.midPeak);
       }
   
       // Ancient background pillars
@@ -1587,7 +1941,7 @@
   // --- Module: src/graphics/SpriteRenderer.js ---
   /**
    * Procedural pixel-art sprite and animation renderer for the player,
-   * flowing scarf trail, slash arcs, astral projectiles, and enemies.
+   * flowing scarf trail, 3-hit combo slash arcs, Soul Focus silhouette, and astral projectiles.
    */
   class SpriteRenderer {
     static drawPlayer(ctx, player) {
@@ -1605,8 +1959,17 @@
         return;
       }
   
+      const isFocusing = player.focusTimer > 0;
+      const isWhiteSilhouette =
+        player.focusFlashTimer > 0 ||
+        (isFocusing && (player.focusTimer > 12 || player.focusTimer % 4 < 3));
+  
       // Draw simulated flowing scarf trail behind player
-      const scarfColor = player.canDash ? PALETTE.playerHair : PALETTE.playerNoDash;
+      const scarfColor = isWhiteSilhouette
+        ? PALETTE.white
+        : player.canDash
+          ? PALETTE.playerHair
+          : PALETTE.playerNoDash;
       if (player.scarfNodes && player.scarfNodes.length > 0) {
         ctx.fillStyle = scarfColor;
         for (let i = 0; i < player.scarfNodes.length; i++) {
@@ -1623,15 +1986,46 @@
       const dx = Math.round(cx - dw / 2);
       const dy = Math.round(by - dh);
   
+      // Soul Focus glowing aura & levitation ring (Hollow Knight style!)
+      if (isFocusing) {
+        const ratio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
+        const ringRadius = Math.max(3, Math.round((1 - ratio) * 14));
+        ctx.fillStyle = "rgba(72, 219, 251, 0.28)";
+        ctx.fillRect(dx - 3, dy - 3, dw + 6, dh + 5);
+        ctx.fillStyle = PALETTE.white;
+        ctx.fillRect(cx - ringRadius, dy + 4, 2, 2);
+        ctx.fillRect(cx + ringRadius - 1, dy + 4, 2, 2);
+        ctx.fillRect(cx - 1, dy + 4 - ringRadius, 2, 2);
+        ctx.fillRect(cx - 1, Math.min(by, dy + 4 + ringRadius), 2, 2);
+  
+        // Rising vertical soul beam pillars
+        const pillarH = Math.round(ratio * (dh + 6));
+        ctx.fillStyle = player.focusTimer % 4 < 2 ? PALETTE.white : PALETTE.soulCyan;
+        ctx.fillRect(dx - 2, by - pillarH, 1, pillarH);
+        ctx.fillRect(dx + dw + 1, by - pillarH, 1, pillarH);
+      }
+  
       // Subtle idle breathing offset
       const isMoving = Math.abs(player.vx) > 0.2;
       const breathOffset =
         player.onGround && !isMoving && Math.sin(player.animTick * 0.12) > 0.5 ? 1 : 0;
   
+      if (isWhiteSilhouette) {
+        // Pure luminous white Soul Focus vessel silhouette
+        ctx.fillStyle = PALETTE.soulCyan;
+        ctx.fillRect(dx - 1, dy - 1 + breathOffset, dw + 2, dh + 1 - breathOffset);
+        ctx.fillStyle = PALETTE.white;
+        ctx.fillRect(dx, dy + breathOffset, dw, dh - breathOffset);
+        // Glowing cyan focus eyes
+        ctx.fillStyle = PALETTE.soulCyan;
+        const eyeX = player.facing === 1 ? dx + dw - 2 : dx;
+        ctx.fillRect(eyeX, dy + 2 + breathOffset, 2, 2);
+        return;
+      }
+  
       // Legs / Animated Run Cycle
       ctx.fillStyle = PALETTE.playerCloakDark;
       if (!player.onGround) {
-        // Airborne tuck pose
         ctx.fillRect(dx + 1, by - 2, dw - 2, 2);
       } else if (isMoving) {
         const stride = Math.floor(player.animTick / 4) % 2;
@@ -1667,18 +2061,26 @@
   
       // Sheathed Celestial Blade on back when unlocked and not swinging
       if (player.hasSword && player.attackTimer <= 0) {
-        ctx.fillStyle = PALETTE.swordGlow;
+        ctx.fillStyle = player.comboResetTimer > 0 && player.comboStep === 1 ? PALETTE.swordCombo : PALETTE.swordGlow;
         const sx = player.facing === 1 ? dx - 2 : dx + dw;
         ctx.fillRect(sx, dy + 1 + breathOffset, 2, 5);
         ctx.fillStyle = PALETTE.white;
         ctx.fillRect(sx, dy + 1 + breathOffset, 1, 2);
       }
   
-      // Focus Heal charging aura
-      if (player.focusTimer > 0) {
-        ctx.fillStyle = player.focusTimer % 4 < 2 ? PALETTE.soulCyan : PALETTE.white;
-        ctx.fillRect(dx - 2, dy - 2, 1, dh + 2);
-        ctx.fillRect(dx + dw + 1, dy - 2, 1, dh + 2);
+      // 3-Hit Combo Step Pips above player when chaining strikes
+      if (player.comboResetTimer > 0 && player.hasSword) {
+        for (let i = 0; i < 3; i++) {
+          const pipX = cx - 5 + i * 4;
+          const pipY = dy - 5;
+          const active = i <= player.comboStep;
+          ctx.fillStyle = !active
+            ? PALETTE.heartEmpty
+            : i === 2
+              ? PALETTE.swordCombo
+              : PALETTE.swordGlow;
+          ctx.fillRect(pipX, pipY, 2, 2);
+        }
       }
     }
   
@@ -1686,14 +2088,17 @@
       const hb = player.getSlashBounds();
       const progress = 1 - player.attackTimer / player.attackMaxTimer;
       const isFlashFrame = player.attackTimer >= player.attackMaxTimer - 2;
+      const isSecondHit = player.comboStep === 1;
       const isFinisher = player.comboStep === 2;
       const mainColor = isFlashFrame
         ? PALETTE.white
         : isFinisher
           ? PALETTE.swordCombo
-          : PALETTE.swordGlow;
-      const innerColor = PALETTE.white;
-      const thick = Math.max(2, Math.round((1 - progress * 0.65) * (isFinisher ? 6 : 5)));
+          : isSecondHit
+            ? PALETTE.soulCyan
+            : PALETTE.swordGlow;
+      const innerColor = isFinisher ? PALETTE.swordGlow : PALETTE.white;
+      const thick = Math.max(2, Math.round((1 - progress * 0.65) * (isFinisher ? 7 : 5)));
   
       ctx.fillStyle = mainColor;
   
@@ -1723,6 +2128,10 @@
   
         ctx.fillStyle = innerColor;
         ctx.fillRect(rightX - 3, hb.y + 4, 2, hb.h - 8);
+        if (isFinisher) {
+          ctx.fillStyle = PALETTE.bossCrimson;
+          ctx.fillRect(rightX - 1, hb.y + 2, 2, hb.h - 4);
+        }
       } else {
         ctx.fillRect(hb.x, hb.y + 3, thick + 3, hb.h - 6);
         ctx.fillRect(hb.x + 2, hb.y + 1, thick, hb.h - 2);
@@ -1731,6 +2140,10 @@
   
         ctx.fillStyle = innerColor;
         ctx.fillRect(hb.x + 1, hb.y + 4, 2, hb.h - 8);
+        if (isFinisher) {
+          ctx.fillStyle = PALETTE.bossCrimson;
+          ctx.fillRect(hb.x - 1, hb.y + 2, 2, hb.h - 4);
+        }
       }
     }
   
@@ -1747,27 +2160,51 @@
 
   // --- Module: src/entities/Enemy.js ---
   /**
-   * Standard enemies (Void Stalker, Crimson Charger, Astral Flyer)
-   * as well as destructible Runic Gates and the 3-Key Grand Sanctum Gate.
+   * Hollow Knight-inspired enemy roster that actively fights back:
+   *  - "patrol"  (Void Stalker): Patrols ledges, spots player, telegraphs a crouch, and lunges!
+   *  - "charger" (Crimson Vanguard): Heavy shield knight; blocks frontal hits from afar and counter-thrusts!
+   *  - "flyer"   (Astral Construct): Swoops and fires aimed astral bolts when player enters range!
+   *  - "duelist" (Mantis Duelist): Agile blademaster with telegraphed dash-slashes and backstep evasions!
+   *  - "mage"    (Sanctum Acolyte): Blinks/teleports across platforms and casts homing/aimed void orbs!
+   *  - "gate" / "keygate": Destructible Runic Gates and 3-Key Grand Sanctum Gate.
    */
   class Enemy extends PhysicsBody {
     constructor(x, y, type = "patrol", customHeight = null) {
       const isGate = type === "gate" || type === "keygate";
-      const h = isGate ? customHeight || 24 : 10;
+      const h = isGate ? customHeight || 24 : type === "duelist" || type === "mage" ? 12 : 10;
       super(x, y, isGate ? 8 : 10, h);
       this.type = type;
       this.isDummy = isGate;
       this.isKeyGate = type === "keygate";
       this.isFlyer = type === "flyer";
-      this.hp = this.isKeyGate ? 999 : isGate ? 3 : type === "charger" ? 3 : 2;
+  
+      if (this.isKeyGate) {
+        this.hp = 999;
+      } else if (isGate) {
+        this.hp = 3;
+      } else if (type === "charger" || type === "duelist") {
+        this.hp = 4;
+      } else if (type === "mage") {
+        this.hp = 3;
+      } else {
+        this.hp = 2;
+      }
+  
       this.maxHp = this.hp;
       this.dir = -1;
+      this.baseX = x;
       this.baseY = y;
       this.flashTimer = 0;
       this.knockbackTimer = 0;
       this.aggro = false;
       this.dead = false;
       this.animTick = Math.floor(Math.random() * 30);
+  
+      // Combat AI State Machine ("PATROL", "WINDUP", "ATTACK", "COOLDOWN")
+      this.aiState = "PATROL";
+      this.aiTimer = 0;
+      this.attackCooldown = 25 + Math.floor(Math.random() * 25);
+      this.projectiles = [];
     }
   
     unlockGrandGate(game) {
@@ -1788,6 +2225,36 @@
       game.particles.addFloatingText(this.x - 20, this.y - 8, "SANCTUM UNSEALED", PALETTE.swordGlow, 45);
     }
   
+    spawnProjectile(vx, vy, color = PALETTE.enemyEye, life = 85) {
+      this.projectiles.push({
+        x: this.x + this.w / 2 - 2,
+        y: this.y + this.h / 2 - 2,
+        w: 5,
+        h: 5,
+        vx,
+        vy,
+        color,
+        life
+      });
+    }
+  
+    updateProjectiles(level, game) {
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const p = this.projectiles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+  
+        if (this.animTick % 3 === 0 && game) {
+          game.particles.spawn(p.x + 2, p.y + 2, 0, 0, p.color, 1, 6, 0);
+        }
+  
+        if (p.life <= 0 || level.collideSolid(p.x, p.y, p.w, p.h)) {
+          this.projectiles.splice(i, 1);
+        }
+      }
+    }
+  
     takeHit(dirX, dirY, game, damage = 1) {
       if (this.isKeyGate) {
         if (game.player.keysCollected >= 3) {
@@ -1806,6 +2273,26 @@
             30
           );
         }
+        return;
+      }
+  
+      // Crimson Vanguard shield block + counter-windup if struck from the front while patrolling!
+      if (
+        this.type === "charger" &&
+        this.aiState === "PATROL" &&
+        dirY === 0 &&
+        dirX !== 0 &&
+        dirX === -this.dir &&
+        damage === 1
+      ) {
+        this.flashTimer = 3;
+        this.vx = dirX * 1.4;
+        this.aiState = "WINDUP";
+        this.aiTimer = 14;
+        game.sound.playHit(false);
+        game.camera.shake(3, 5);
+        game.particles.spawnHitSpray(this.x + this.w / 2, this.y + this.h / 2, -dirX, -0.3, 10, PALETTE.white);
+        game.particles.addFloatingText(this.x - 10, this.y - 8, "GUARD COUNTER!", PALETTE.swordGlow, 24);
         return;
       }
   
@@ -1839,7 +2326,14 @@
           this.vx = dirX * (isFinisher ? 4.2 : 3.5);
           this.vy = -1.6;
         }
-        this.knockbackTimer = 11;
+        this.knockbackTimer = 10;
+  
+        // Mantis Duelist swiftly recovers and prepares a counter-lunge after taking a hit!
+        if (this.type === "duelist" && this.hp > 0 && this.aiState !== "ATTACK") {
+          this.dir = Math.sign(game.player.x - this.x) || this.dir;
+          this.aiState = "WINDUP";
+          this.aiTimer = 16;
+        }
       } else {
         this.knockbackTimer = 4;
       }
@@ -1849,6 +2343,7 @@
   
       if (this.hp <= 0) {
         this.dead = true;
+        this.projectiles.length = 0;
         if (!this.isDummy) {
           game.player.addSoul(PLAYER_CONFIG.SOUL_PER_KILL);
           game.saveManager.recordKill();
@@ -1873,21 +2368,48 @@
   
       if (this.flashTimer > 0) this.flashTimer--;
       if (this.knockbackTimer > 0) this.knockbackTimer--;
+      if (this.attackCooldown > 0) this.attackCooldown--;
+  
+      this.updateProjectiles(level, player.game);
   
       if (this.isDummy) return;
   
+      const dx = player.x - this.x;
+      const dy = player.y - this.y;
+      const absDx = Math.abs(dx);
+      const absDy = Math.abs(dy);
+  
+      // 1. ASTRAL CONSTRUCT (Flying Striker that fires aimed bolts)
       if (this.isFlyer) {
         if (this.knockbackTimer > 0) {
           this.vx *= 0.85;
           this.vy *= 0.85;
+        } else if (this.aiState === "WINDUP") {
+          this.vx *= 0.7;
+          this.vy *= 0.7;
+          this.dir = Math.sign(dx) || 1;
+          this.aiTimer--;
+          if (this.aiTimer <= 0) {
+            const angle = Math.atan2(dy, dx);
+            this.spawnProjectile(Math.cos(angle) * 2.1, Math.sin(angle) * 2.1, PALETTE.swordGlow, 75);
+            player.game.sound.playWaveCast();
+            this.vx = -Math.cos(angle) * 1.1;
+            this.aiState = "PATROL";
+            this.attackCooldown = 85;
+          }
         } else {
           const wallAhead = level.collideSolid(this.x + this.dir * 2, this.y, this.w, this.h);
           if (wallAhead || this.x < 16 || this.x > level.cols * VIEWPORT.TILE - 26) {
             this.dir *= -1;
           }
-          this.vx = this.dir * 0.68;
+          this.vx = this.dir * 0.72;
           const targetY = this.baseY + Math.sin(this.animTick * 0.08) * 8;
           this.vy = (targetY - this.y) * 0.15;
+  
+          if (absDx < 96 && absDy < 64 && this.attackCooldown <= 0) {
+            this.aiState = "WINDUP";
+            this.aiTimer = 22;
+          }
         }
   
         this.moveX(this.vx, level, () => {
@@ -1902,16 +2424,139 @@
   
       this.onGround = level.collideSolid(this.x, this.y + 1, this.w, this.h);
   
+      // 2. SANCTUM ACOLYTE ("mage" - teleports/blinks & fires twin void orbs)
+      if (this.type === "mage") {
+        this.dir = Math.sign(dx) || 1;
+        if (this.knockbackTimer > 0) {
+          this.vx *= 0.8;
+        } else if (this.aiState === "WINDUP") {
+          this.vx = 0;
+          this.aiTimer--;
+          if (this.aiTimer <= 0) {
+            const angle = Math.atan2(dy - 2, dx);
+            this.spawnProjectile(Math.cos(angle) * 2.25, Math.sin(angle) * 2.25, PALETTE.soulCyan, 90);
+            this.spawnProjectile(
+              Math.cos(angle + 0.22) * 1.95,
+              Math.sin(angle + 0.22) * 1.95,
+              PALETTE.enemyEye,
+              90
+            );
+            player.game.sound.playWaveCast();
+            this.aiState = "COOLDOWN";
+            this.aiTimer = 30;
+            this.attackCooldown = 75;
+          }
+        } else if (this.aiState === "COOLDOWN") {
+          this.vx = 0;
+          this.aiTimer--;
+          if (this.aiTimer <= 0) {
+            // Blink/teleport away if player is close!
+            if (absDx < 56) {
+              const blinkOffsets = [-40, 40, -24, 24];
+              for (const off of blinkOffsets) {
+                const tx = this.x + off;
+                if (
+                  tx > 16 &&
+                  tx < level.cols * VIEWPORT.TILE - 24 &&
+                  !level.collideSolid(tx, this.y, this.w, this.h) &&
+                  level.collideSolid(tx, this.y + 2, this.w, this.h) &&
+                  !level.collideSpike(tx, this.y, this.w, this.h)
+                ) {
+                  player.game.particles.spawnBurst(this.x + 5, this.y + 6, PALETTE.soulCyan, PALETTE.white, 10);
+                  this.x = tx;
+                  player.game.particles.spawnBurst(this.x + 5, this.y + 6, PALETTE.soulCyan, PALETTE.white, 10);
+                  break;
+                }
+              }
+            }
+            this.aiState = "PATROL";
+          }
+        } else {
+          this.vx *= 0.8;
+          if (absDx < 115 && absDy < 56 && this.attackCooldown <= 0) {
+            this.aiState = "WINDUP";
+            this.aiTimer = 26;
+          }
+        }
+  
+        this.vy = Math.min(3.5, this.vy + 0.22);
+        this.moveX(this.vx, level, () => {
+          this.vx = 0;
+        });
+        this.moveY(this.vy, level, () => {
+          this.vy = 0;
+        });
+        return;
+      }
+  
+      // 3. GROUNDED COMBATANTS ("patrol" Void Stalker, "charger" Crimson Vanguard, "duelist" Mantis Duelist)
       if (this.knockbackTimer > 0) {
         this.vx *= 0.82;
+      } else if (this.aiState === "WINDUP") {
+        this.vx *= 0.65;
+        this.dir = Math.sign(dx) || this.dir;
+        this.aiTimer--;
+        if (this.aiTimer <= 0) {
+          this.aiState = "ATTACK";
+          if (this.type === "duelist") {
+            this.aiTimer = 14;
+            this.vx = this.dir * 3.45;
+            this.vy = -0.9;
+            player.game.sound.playSwing(2);
+          } else if (this.type === "charger") {
+            this.aiTimer = 18;
+            this.vx = this.dir * 2.85;
+            player.game.sound.playDash();
+          } else {
+            // Void Stalker hop-lunge
+            this.aiTimer = 13;
+            this.vx = this.dir * 2.35;
+            this.vy = -1.5;
+            player.game.sound.playSwing(0);
+          }
+        }
+      } else if (this.aiState === "ATTACK") {
+        this.aiTimer--;
+        // Stop lunge if about to run off a ledge into spikes/pit
+        const lookAheadX = this.dir === 1 ? this.x + this.w + 2 : this.x - 3;
+        const groundAhead = level.collideSolid(lookAheadX, this.y + this.h + 2, 2, 4);
+        if (this.onGround && !groundAhead) {
+          this.vx = 0;
+          this.aiTimer = 0;
+        }
+        if (this.aiTimer <= 0) {
+          this.aiState = "COOLDOWN";
+          this.aiTimer = this.type === "duelist" ? 16 : 22;
+          this.attackCooldown = this.type === "duelist" ? 36 : 52;
+          this.vx *= 0.35;
+        }
+      } else if (this.aiState === "COOLDOWN") {
+        this.vx *= 0.78;
+        this.aiTimer--;
+        if (this.aiTimer <= 0) {
+          this.aiState = "PATROL";
+        }
       } else {
-        const distToPlayerX = player.x - this.x;
-        const distToPlayerY = Math.abs(player.y - this.y);
+        // PATROL & AGGRO DETECTION
+        const detectRange = this.type === "duelist" ? 96 : this.type === "charger" ? 92 : 64;
+        const strikeRange = this.type === "duelist" ? 58 : this.type === "charger" ? 52 : 42;
   
-        if (this.type === "charger" && Math.abs(distToPlayerX) < 88 && distToPlayerY < 24) {
+        if (absDx < detectRange && absDy < 26) {
           this.aggro = true;
-          this.dir = Math.sign(distToPlayerX) || 1;
-          this.vx += (this.dir * 1.2 - this.vx) * 0.18;
+          this.dir = Math.sign(dx) || 1;
+          const lookAheadX = this.dir === 1 ? this.x + this.w + 1 : this.x - 2;
+          const groundAhead = level.collideSolid(lookAheadX, this.y + this.h + 1, 1, 2);
+  
+          if (absDx <= strikeRange && this.attackCooldown <= 0 && groundAhead) {
+            this.aiState = "WINDUP";
+            this.aiTimer = this.type === "duelist" ? 15 : this.type === "charger" ? 18 : 20;
+            this.vx = 0;
+          } else if (groundAhead) {
+            const chaseSpeed = this.type === "duelist" ? 1.35 : this.type === "charger" ? 1.15 : 0.88;
+            this.vx += (this.dir * chaseSpeed - this.vx) * 0.2;
+          } else {
+            this.vx = 0;
+          }
         } else {
           this.aggro = false;
           const lookAheadX = this.dir === 1 ? this.x + this.w + 1 : this.x - 2;
@@ -1921,7 +2566,7 @@
           if ((this.onGround && !groundAhead) || wallAhead) {
             this.dir *= -1;
           }
-          this.vx = this.dir * 0.62;
+          this.vx = this.dir * 0.65;
         }
       }
   
@@ -1929,7 +2574,7 @@
   
       this.moveX(this.vx, level, () => {
         this.vx = 0;
-        this.dir *= -1;
+        if (this.aiState === "PATROL") this.dir *= -1;
       });
       this.moveY(this.vy, level, () => {
         this.vy = 0;
@@ -1939,15 +2584,29 @@
         level.collideSpike(this.x, this.y, this.w, this.h) ||
         this.y > level.rows * VIEWPORT.TILE + 8
       ) {
-        this.takeHit(this.dir, 0, player.game, 3);
+        this.takeHit(this.dir, 0, player.game, 4);
       }
     }
   
     draw(ctx) {
       if (this.dead) return;
   
+      // Draw enemy projectiles
+      for (const p of this.projectiles) {
+        const px = Math.round(p.x);
+        const py = Math.round(p.y);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(px, py, p.w, p.h);
+        ctx.fillStyle = PALETTE.white;
+        ctx.fillRect(px + 1, py + 1, p.w - 2, p.h - 2);
+      }
+  
       const shakeX =
-        this.knockbackTimer > 0 && this.isDummy ? (this.knockbackTimer % 2 === 0 ? 1 : -1) : 0;
+        (this.knockbackTimer > 0 && this.isDummy) || this.aiState === "WINDUP"
+          ? this.animTick % 2 === 0
+            ? 1
+            : -1
+          : 0;
       const rx = Math.round(this.x) + shakeX;
       const ry = Math.round(this.y);
   
@@ -1982,9 +2641,16 @@
         return;
       }
   
+      // Telegraph exclamation / weapon glint when winding up an attack!
+      if (this.aiState === "WINDUP") {
+        ctx.fillStyle = this.animTick % 4 < 2 ? PALETTE.swordGlow : PALETTE.enemyEye;
+        ctx.fillRect(rx + 4, ry - 6, 2, 3);
+        ctx.fillRect(rx + 4, ry - 2, 2, 1);
+      }
+  
       if (this.isFlyer) {
         const wingFlap = Math.sin(this.animTick * 0.35) > 0 ? -2 : 2;
-        ctx.fillStyle = PALETTE.playerNoDash;
+        ctx.fillStyle = this.aiState === "WINDUP" ? PALETTE.swordGlow : PALETTE.playerNoDash;
         ctx.fillRect(rx - 3, ry + 3 + wingFlap, 3, 3);
         ctx.fillRect(rx + this.w, ry + 3 + wingFlap, 3, 3);
   
@@ -1993,12 +2659,61 @@
         ctx.fillStyle = "#273c75";
         ctx.fillRect(rx + 2, ry + this.h - 2, this.w - 4, 2);
   
-        ctx.fillStyle = PALETTE.swordGlow;
+        ctx.fillStyle = this.aiState === "WINDUP" ? PALETTE.white : PALETTE.swordGlow;
         ctx.fillRect(rx + 3, ry + 3, 4, 3);
         return;
       }
   
-      const bounce = Math.sin(this.animTick * 0.22) > 0.3 ? 1 : 0;
+      if (this.type === "mage") {
+        const hover = Math.round(Math.sin(this.animTick * 0.14) * 1);
+        // Hooded Sanctum Acolyte robe
+        ctx.fillStyle = "#2c224e";
+        ctx.fillRect(rx + 1, ry + 2 + hover, this.w - 2, this.h - 2);
+        ctx.fillStyle = PALETTE.enemyBody;
+        ctx.fillRect(rx + 2, ry + hover, this.w - 4, 4);
+        // Glowing arcane eyes
+        ctx.fillStyle = PALETTE.soulCyan;
+        const eyeX = this.dir === 1 ? rx + 5 : rx + 2;
+        ctx.fillRect(eyeX, ry + 2 + hover, 3, 2);
+        // Floating astral staff / casting orb
+        const orbX = this.dir === 1 ? rx + this.w + 1 : rx - 3;
+        ctx.fillStyle = this.aiState === "WINDUP" ? PALETTE.white : PALETTE.soulCyan;
+        ctx.fillRect(orbX, ry + 3 + hover, 3, 3);
+        return;
+      }
+  
+      if (this.type === "duelist") {
+        const crouch = this.aiState === "WINDUP" ? 2 : 0;
+        // Mantis Duelist sleek armored silhouette + twin scythe blades
+        ctx.fillStyle = "#1e272e";
+        ctx.fillRect(rx + 2, ry + this.h - 3, 2, 3);
+        ctx.fillRect(rx + this.w - 4, ry + this.h - 3, 2, 3);
+  
+        ctx.fillStyle = "#20bf6b";
+        ctx.fillRect(rx + 1, ry + 2 + crouch, this.w - 2, this.h - 5 - crouch);
+        // Mantis horned mask
+        ctx.fillStyle = PALETTE.white;
+        ctx.fillRect(rx + 2, ry + crouch, this.w - 4, 3);
+        ctx.fillRect(rx + 1, ry - 2 + crouch, 2, 2);
+        ctx.fillRect(rx + this.w - 3, ry - 2 + crouch, 2, 2);
+        ctx.fillStyle = PALETTE.enemyEye;
+        const eyeX = this.dir === 1 ? rx + 5 : rx + 2;
+        ctx.fillRect(eyeX, ry + 1 + crouch, 2, 2);
+  
+        // Scythe blade slash visual during ATTACK or held ready
+        ctx.fillStyle = this.aiState === "ATTACK" ? PALETTE.white : PALETTE.relicCyan;
+        const bladeX = this.dir === 1 ? rx + this.w : rx - 4;
+        const bladeW = this.aiState === "ATTACK" ? 7 : 3;
+        ctx.fillRect(
+          this.dir === 1 ? bladeX : rx - bladeW,
+          ry + 4 + crouch,
+          bladeW,
+          2
+        );
+        return;
+      }
+  
+      const bounce = this.aiState === "WINDUP" ? 1 : Math.sin(this.animTick * 0.22) > 0.3 ? 1 : 0;
       const isCharger = this.type === "charger";
   
       // Animated legs
@@ -2023,10 +2738,16 @@
       ctx.fillStyle = PALETTE.enemyEye;
       ctx.fillRect(rx + eyeOffset + (this.dir === 1 ? 2 : 0), ry + 3 + bounce, 2, 2);
   
-      // Aggro alert spark above Charger
-      if (isCharger && this.aggro && this.animTick % 6 < 3) {
+      // Crimson Vanguard heavy front shield & lance
+      if (isCharger) {
+        const shieldX = this.dir === 1 ? rx + this.w - 1 : rx - 2;
         ctx.fillStyle = PALETTE.swordGlow;
-        ctx.fillRect(rx + 4, ry - 6, 2, 3);
+        ctx.fillRect(shieldX, ry + 2 + bounce, 3, 6);
+        if (this.aiState === "ATTACK") {
+          ctx.fillStyle = PALETTE.white;
+          const lanceX = this.dir === 1 ? rx + this.w + 2 : rx - 6;
+          ctx.fillRect(lanceX, ry + 4, 4, 2);
+        }
       }
     }
   }
@@ -2417,7 +3138,8 @@
   // --- Module: src/entities/Player.js ---
   /**
    * Player entity featuring 4-directional sword combat, 3-hit combo chains,
-   * downward pogo bounce, wall-slide/wall-jump, horizontal dash, and Soul skills.
+   * downward pogo bounce, wall-slide/wall-jump, horizontal dash, and Hollow Knight-style
+   * Hold-to-Focus Soul Healing + Tap-to-Cast Astral Wave.
    */
   class Player extends PhysicsBody {
     constructor(x, y, game) {
@@ -2462,8 +3184,11 @@
       this.swingDidRecoil = false;
       this.invulnTimer = 0;
   
-      // Soul Focus & Astral Wave projectiles
+      // Hollow Knight-style Soul Focus channel & Astral Wave projectiles
+      this.skillHoldTimer = 0;
+      this.skillConsumedThisHold = false;
       this.focusTimer = 0;
+      this.focusFlashTimer = 0;
       this.waves = [];
   
       // Visual animation & Verlet scarf nodes
@@ -2482,7 +3207,10 @@
       this.remY = 0;
       this.dashTimer = 0;
       this.attackTimer = 0;
+      this.skillHoldTimer = 0;
+      this.skillConsumedThisHold = false;
       this.focusTimer = 0;
+      this.focusFlashTimer = 0;
       this.pogoJumping = false;
       this.wallSliding = false;
       this.canDash = true;
@@ -2501,7 +3229,11 @@
     takeDamage(amount = 1) {
       if (this.invulnTimer > 0 || this.game.deathSequence.active) return;
       this.hp = Math.max(0, this.hp - amount);
-      this.focusTimer = 0;
+      if (this.focusTimer > 0) {
+        this.focusTimer = 0;
+        this.skillConsumedThisHold = true;
+        this.game.particles.addFloatingText(this.x - 12, this.y - 8, "FOCUS BROKEN!", PALETTE.playerHair, 28);
+      }
       if (this.hp <= 0) {
         this.die();
       } else {
@@ -2525,13 +3257,68 @@
     die() {
       if (this.game.deathSequence.active) return;
       this.hp = 0;
+      this.focusTimer = 0;
       this.game.startDeathSequence(this.x + this.w / 2, this.y + this.h / 2);
+    }
+  
+    castAstralWave() {
+      this.soul -= PLAYER_CONFIG.SOUL_WAVE_COST;
+      this.game.sound.playWaveCast();
+      this.game.camera.shake(2.5, 5);
+      this.waves.push({
+        x: this.facing === 1 ? this.x + this.w : this.x - 10,
+        y: this.y + 1,
+        w: 10,
+        h: 7,
+        vx: this.facing * 4.8,
+        dir: this.facing,
+        life: 36,
+        hitSet: new Set()
+      });
+    }
+  
+    completeFocusHeal() {
+      this.soul = Math.max(0, this.soul - PLAYER_CONFIG.SOUL_HEAL_COST);
+      this.focusTimer = 0;
+      this.focusFlashTimer = 18;
+      this.skillConsumedThisHold = true;
+      this.scaleX = 1.35;
+      this.scaleY = 0.72;
+  
+      this.game.sound.playHeal();
+      this.game.hitstop = 5;
+      this.game.camera.shake(3.5, 9);
+      this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.white, PALETTE.soulCyan, 28);
+      this.game.particles.addShockwave(this.x + 3, this.y + 4, 26, PALETTE.white, 16);
+      this.game.particles.addFloatingText(this.x - 10, this.y - 10, "SOUL FOCUS!", PALETTE.white, 38);
+  
+      // Spawn flying heart from player's body in screen-space directly into the HUD heart slot!
+      const targetHeartIndex = Math.min(this.maxHp - 1, this.hp);
+      const heartSpan = this.maxHp * 10;
+      const hudStartX = VIEWPORT.WIDTH - heartSpan - 6;
+      const targetScreenX = hudStartX + targetHeartIndex * 10;
+      const targetScreenY = 7;
+  
+      const startScreenX = Math.round(this.x - this.game.camera.x);
+      const startScreenY = Math.round(this.y - this.game.camera.y);
+  
+      this.game.particles.spawnFlyingHeart(
+        startScreenX,
+        startScreenY,
+        targetScreenX,
+        targetScreenY,
+        () => {
+          this.hp = Math.min(this.maxHp, this.hp + 1);
+          this.game.sound.playMenuSelect();
+          this.game.camera.shake(2, 4);
+        }
+      );
     }
   
     getSlashBounds() {
       const px = Math.round(this.x);
       const py = Math.round(this.y);
-      const finisherBonus = this.comboStep === 2 ? 4 : 0;
+      const finisherBonus = this.comboStep === 2 ? 6 : 0;
   
       if (this.atkDirY === -1) {
         return {
@@ -2550,16 +3337,16 @@
       } else if (this.atkDirX === 1) {
         return {
           x: px + this.w - 2,
-          y: py - 4,
+          y: py - 4 - (this.comboStep === 2 ? 2 : 0),
           w: 24 + finisherBonus,
-          h: this.h + 8
+          h: this.h + 8 + (this.comboStep === 2 ? 4 : 0)
         };
       } else {
         return {
           x: px - 22 - finisherBonus,
-          y: py - 4,
+          y: py - 4 - (this.comboStep === 2 ? 2 : 0),
           w: 24 + finisherBonus,
-          h: this.h + 8
+          h: this.h + 8 + (this.comboStep === 2 ? 4 : 0)
         };
       }
     }
@@ -2636,6 +3423,7 @@
       if (this.dashCooldown > 0) this.dashCooldown--;
       if (this.attackCooldown > 0) this.attackCooldown--;
       if (this.wallJumpLock > 0) this.wallJumpLock--;
+      if (this.focusFlashTimer > 0) this.focusFlashTimer--;
       if (this.comboResetTimer > 0) {
         this.comboResetTimer--;
         if (this.comboResetTimer === 0) this.comboStep = 0;
@@ -2686,51 +3474,86 @@
   
       // Horizontal directional input
       const rawMove = (input.actionDown("right") ? 1 : 0) - (input.actionDown("left") ? 1 : 0);
-      const moveInput = this.wallJumpLock > 0 ? this.facing : rawMove;
-      if (rawMove !== 0 && this.attackTimer <= 0 && this.wallJumpLock <= 0) {
+  
+      // --- HOLLOW KNIGHT-STYLE SOUL FOCUS HEAL (Hold Skill on ground) vs ASTRAL WAVE (Tap Skill) ---
+      const skillDown = input.actionDown("skill");
+      const canStartFocus =
+        this.hasSword &&
+        this.onGround &&
+        this.dashTimer <= 0 &&
+        this.attackTimer <= 0 &&
+        this.hp < this.maxHp &&
+        this.soul >= PLAYER_CONFIG.SOUL_HEAL_COST;
+  
+      if (skillDown && this.hasSword) {
+        this.skillHoldTimer++;
+  
+        if (!this.skillConsumedThisHold && canStartFocus && this.skillHoldTimer >= PLAYER_CONFIG.FOCUS_HOLD_THRESHOLD) {
+          // Channeling Soul Focus: immobilized, glowing white, rising soul wisps
+          this.focusTimer++;
+          this.vx = 0;
+  
+          if (this.focusTimer === 1) {
+            this.game.particles.addFloatingText(this.x - 10, this.y - 8, "FOCUSING...", PALETTE.soulCyan, 22);
+          }
+  
+          if (this.focusTimer % 5 === 0) {
+            const progressRatio = this.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES;
+            this.game.sound.playFocusTick(progressRatio);
+            // Converging & rising white/cyan soul motes around the body
+            const offsetX = (Math.random() - 0.5) * 18;
+            const offsetY = (Math.random() - 0.5) * 14;
+            this.game.particles.spawn(
+              this.x + this.w / 2 + offsetX,
+              this.y + this.h / 2 + offsetY,
+              -offsetX * 0.08,
+              -0.45 - Math.random() * 0.4,
+              this.focusTimer % 10 === 0 ? PALETTE.white : PALETTE.soulCyan,
+              2,
+              14,
+              -0.01,
+              0.95
+            );
+          }
+  
+          // Cancel focus if player jumps, dashes, attacks, or leaves ground
+          if (input.actionPressed("jump") || input.actionPressed("dash") || input.actionPressed("attack") || !this.onGround) {
+            this.focusTimer = 0;
+            this.skillConsumedThisHold = true;
+          } else if (this.focusTimer >= PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES) {
+            this.completeFocusHeal();
+          }
+        } else if (!this.skillConsumedThisHold && this.skillHoldTimer === 1 && !canStartFocus) {
+          // Instant Astral Wave if airborne or already at full HP (or enough for wave but not heal)
+          if (this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST) {
+            this.castAstralWave();
+            this.skillConsumedThisHold = true;
+          }
+        }
+      } else {
+        // Released Skill button: if it was a quick tap before Focus started, cast Astral Wave!
+        if (
+          this.hasSword &&
+          !this.skillConsumedThisHold &&
+          this.skillHoldTimer > 0 &&
+          this.skillHoldTimer < PLAYER_CONFIG.FOCUS_HOLD_THRESHOLD + 6 &&
+          this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST
+        ) {
+          this.castAstralWave();
+        }
+        this.skillHoldTimer = 0;
+        this.skillConsumedThisHold = false;
+        this.focusTimer = 0;
+      }
+  
+      const isFocusing = this.focusTimer > 0;
+      const moveInput = isFocusing ? 0 : this.wallJumpLock > 0 ? this.facing : rawMove;
+      if (!isFocusing && rawMove !== 0 && this.attackTimer <= 0 && this.wallJumpLock <= 0) {
         this.facing = rawMove;
       }
   
-      // Soul Ability: Heal (Down/Up + Skill or grounded missing HP) or Cast Astral Wave
-      if (this.hasSword && input.actionPressed("skill")) {
-        const wantsHeal =
-          (input.actionDown("up") || input.actionDown("down")) &&
-          this.hp < this.maxHp &&
-          this.soul >= PLAYER_CONFIG.SOUL_HEAL_COST;
-  
-        if (wantsHeal) {
-          this.soul -= PLAYER_CONFIG.SOUL_HEAL_COST;
-          this.hp = Math.min(this.maxHp, this.hp + 1);
-          this.game.sound.playHeal();
-          this.game.hitstop = 4;
-          this.game.camera.shake(2.5, 6);
-          this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.soulCyan, PALETTE.white, 22);
-          this.game.particles.addFloatingText(this.x - 6, this.y - 6, "+1 HEART", PALETTE.soulCyan);
-        } else if (this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST) {
-          this.soul -= PLAYER_CONFIG.SOUL_WAVE_COST;
-          this.game.sound.playWaveCast();
-          this.game.camera.shake(2.5, 5);
-          this.waves.push({
-            x: this.facing === 1 ? this.x + this.w : this.x - 10,
-            y: this.y + 1,
-            w: 10,
-            h: 7,
-            vx: this.facing * 4.8,
-            dir: this.facing,
-            life: 36,
-            hitSet: new Set()
-          });
-        } else if (this.hp < this.maxHp && this.soul >= PLAYER_CONFIG.SOUL_HEAL_COST) {
-          this.soul -= PLAYER_CONFIG.SOUL_HEAL_COST;
-          this.hp = Math.min(this.maxHp, this.hp + 1);
-          this.game.sound.playHeal();
-          this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.soulCyan, PALETTE.white, 20);
-          this.game.particles.addFloatingText(this.x - 6, this.y - 6, "+1 HEART", PALETTE.soulCyan);
-        }
-      }
-  
       // Dash Initiation
-      if (input.actionPressed("dash") && this.canDash && this.dashCooldown <= 0) {
+      if (!isFocusing && input.actionPressed("dash") && this.canDash && this.dashCooldown <= 0) {
         this.canDash = false;
         this.pogoJumping = false;
         this.wallSliding = false;
@@ -2763,6 +3586,10 @@
         if (this.dashTimer === 0) {
           this.vx *= 0.5;
         }
+      } else if (isFocusing) {
+        // Immobilized while channeling Soul Focus
+        this.vx = 0;
+        this.vy = Math.min(PLAYER_CONFIG.MAX_FALL_SPEED, this.vy + PLAYER_CONFIG.GRAVITY_FALL);
       } else {
         const maxRun = PLAYER_CONFIG.MAX_RUN_SPEED;
         const accel = this.onGround ? PLAYER_CONFIG.GROUND_ACCEL : PLAYER_CONFIG.AIR_ACCEL;
@@ -2876,8 +3703,8 @@
         this.vy = Math.min(maxFall, this.vy + gravity);
       }
   
-      // 4-Directional Attack & 3-Hit Combo Initiation
-      if (this.hasSword && input.actionPressed("attack") && this.attackCooldown <= 0) {
+      // 4-Directional Attack & 3-Hit Combo Initiation (Forehand -> Backhand -> Solar Finisher!)
+      if (!isFocusing && this.hasSword && input.actionPressed("attack") && this.attackCooldown <= 0) {
         if (this.comboResetTimer > 0) {
           this.comboStep = (this.comboStep + 1) % 3;
         } else {
@@ -2901,6 +3728,17 @@
           if (rawMove !== 0) this.facing = rawMove;
           this.atkDirX = this.facing;
           this.atkDirY = 0;
+          // Subtle forward lunge on 3rd hit Solar Finisher
+          if (this.comboStep === 2 && this.onGround) {
+            this.vx = this.facing * 2.1;
+            this.game.particles.spawnBurst(
+              this.x + this.w / 2,
+              this.y + this.h / 2,
+              PALETTE.swordCombo,
+              PALETTE.white,
+              10
+            );
+          }
         }
       }
   
@@ -2961,28 +3799,39 @@
         }
       }
   
-      // Checkpoint Shrine interaction
+      // Attunement Checkpoint Shrine interaction (restores HP and binds respawn point!)
       if (level.checkpoint) {
         const cp = level.checkpoint;
         if (
-          !cp.activated &&
           this.x < cp.x + 14 &&
           this.x + this.w > cp.x - 6 &&
           this.y < cp.y + 16 &&
           this.y + this.h > cp.y - 16
         ) {
-          cp.activated = true;
-          this.spawnX = cp.x;
-          this.spawnY = cp.y - 1;
-          this.hp = this.maxHp;
-          this.addSoul(40);
-          this.game.checkpointStage = level.currentIndex;
-          this.game.checkpointX = cp.x;
-          this.game.checkpointY = cp.y - 1;
-          this.game.sound.playCheckpoint();
-          this.game.camera.shake(3, 8);
-          this.game.particles.spawnBurst(cp.x + 4, cp.y, PALETTE.playerNoDash, PALETTE.white, 26);
-          this.game.particles.addFloatingText(cp.x - 16, cp.y - 10, "SHRINE ATTUNED", PALETTE.playerNoDash, 42);
+          const needsHealOrBind =
+            !cp.activated ||
+            this.hp < this.maxHp ||
+            this.game.checkpointStage !== level.currentIndex;
+  
+          if (needsHealOrBind) {
+            cp.activated = true;
+            this.spawnX = cp.x;
+            this.spawnY = cp.y - 1;
+            this.hp = this.maxHp;
+            this.addSoul(40);
+            this.game.bindCheckpoint(level.currentIndex, cp.x, cp.y - 1);
+            this.game.sound.playCheckpoint();
+            this.game.camera.shake(3, 8);
+            this.game.particles.spawnBurst(cp.x + 4, cp.y, PALETTE.playerNoDash, PALETTE.white, 26);
+            this.game.particles.addShockwave(cp.x + 4, cp.y, 26, PALETTE.playerNoDash, 16);
+            this.game.particles.addFloatingText(
+              cp.x - 22,
+              cp.y - 10,
+              "SHRINE ATTUNED - HP RESTORED",
+              PALETTE.playerNoDash,
+              46
+            );
+          }
         }
       }
   
@@ -3055,12 +3904,27 @@
         }
       }
   
-      // Enemy & Boss contact damage (dash grants brief evasion i-frames)
+      // Enemy, Enemy Projectile & Boss contact damage (dash grants brief evasion i-frames)
       if (this.invulnTimer <= 0 && this.dashTimer <= 0) {
         for (const enemy of level.enemies) {
           if (!enemy.dead && !enemy.isDummy && enemy.knockbackTimer <= 0 && this.intersects(enemy)) {
             this.takeDamage(1);
             return;
+          }
+          if (enemy.projectiles && enemy.projectiles.length > 0) {
+            for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
+              const proj = enemy.projectiles[i];
+              if (
+                this.x < proj.x + proj.w &&
+                this.x + this.w > proj.x &&
+                this.y < proj.y + proj.h &&
+                this.y + this.h > proj.y
+              ) {
+                enemy.projectiles.splice(i, 1);
+                this.takeDamage(1);
+                return;
+              }
+            }
           }
         }
         if (level.boss && !level.boss.dead && this.intersects(level.boss)) {
@@ -3087,11 +3951,35 @@
   
     checkActiveSlash(level) {
       const hb = this.getSlashBounds();
-      const damage = this.comboStep === 2 ? 2 : 1;
+      const isFinisher = this.comboStep === 2;
+      const damage = isFinisher ? 2 : 1;
       let hitEnemyThisFrame = false;
   
       for (const enemy of level.enemies) {
-        if (enemy.dead || this.swingHitTargets.has(enemy)) continue;
+        if (enemy.dead) continue;
+  
+        // Deflect enemy projectiles with blade slash!
+        if (enemy.projectiles && enemy.projectiles.length > 0) {
+          for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
+            const proj = enemy.projectiles[i];
+            if (
+              hb.x < proj.x + proj.w &&
+              hb.x + hb.w > proj.x &&
+              hb.y < proj.y + proj.h &&
+              hb.y + hb.h > proj.y
+            ) {
+              enemy.projectiles.splice(i, 1);
+              hitEnemyThisFrame = true;
+              this.addSoul(16);
+              this.invulnTimer = Math.max(this.invulnTimer, PLAYER_CONFIG.INVULN_PARRY_FRAMES);
+              this.game.sound.playHit(true);
+              this.game.particles.spawnBurst(proj.x + 2, proj.y + 2, PALETTE.soulCyan, PALETTE.white, 12);
+              this.game.particles.addFloatingText(proj.x - 8, proj.y - 6, "PARRY!", PALETTE.soulCyan, 24);
+            }
+          }
+        }
+  
+        if (this.swingHitTargets.has(enemy)) continue;
         if (
           hb.x < enemy.x + enemy.w &&
           hb.x + hb.w > enemy.x &&
@@ -3101,6 +3989,15 @@
           this.swingHitTargets.add(enemy);
           hitEnemyThisFrame = true;
           enemy.takeHit(this.atkDirX, this.atkDirY, this.game, damage);
+          if (isFinisher && !enemy.isDummy) {
+            this.game.particles.addFloatingText(
+              enemy.x - 10,
+              enemy.y - 8,
+              "SOLAR FINISHER! 2X",
+              PALETTE.swordCombo,
+              30
+            );
+          }
         }
       }
   
@@ -3117,6 +4014,9 @@
           this.swingHitTargets.add(b);
           hitEnemyThisFrame = true;
           b.takeHit(this.atkDirX, this.atkDirY, this.game, damage);
+          if (isFinisher) {
+            this.game.particles.addFloatingText(b.x - 10, b.y - 10, "SOLAR FINISHER! 2X", PALETTE.swordCombo, 30);
+          }
         }
   
         for (let i = b.projectiles.length - 1; i >= 0; i--) {
@@ -3182,26 +4082,112 @@
 
   // --- Module: src/world/stages.js ---
   /**
-   * Stage definitions for Chapters I through X, including the procedural
-   * 120x60 Grand Labyrinth (Stage 9) and the Eclipse Sanctum Boss Arena (Stage 10).
+   * Stage definitions for Chapters I through XII, including:
+   *  - Stage I (Silent Precipice) with Awakening Attunement Shrine
+   *  - Stage V (Crimson Bastion) expanded 80x36 scrolling fortress with Citadel Attunement Shrine
+   *  - Stage VII (Mantis Cloister) featuring Mantis Duelists
+   *  - Stage IX (Astral Observatory) featuring Sanctum Acolytes
+   *  - Stage XI (The Grand Labyrinth) 120x60 non-linear fortress with Sanctum Nexus Shrine
+   *  - Stage XII (Eclipse Sanctum) Final Boss Arena against Seraph Vael
    *
    * Tile Legend:
    *  # = Solid stone / runic architecture
    *  ^ = Lethal crystal spikes (can be pogo-slashed)
    *  P = Player spawn coordinate
    *  S = Celestial Blade Shrine (Stage 2)
-   *  K = Attunement Checkpoint Shrine
-   *  Q = Sanctum Key (Stage 9)
+   *  K = Attunement Checkpoint Shrine (Stages 1, 5, and 11)
+   *  Q = Sanctum Key (Stage 11)
    *  R = Hidden Starlight Relic (3 Relics upgrades Max Hearts to 4)
    *  G = Destructible Runic Barrier Gate
    *  L = 3-Key Grand Sanctum Gate
-   *  E = Void Stalker (Patrol Enemy)
-   *  C = Crimson Vanguard (Charger Enemy)
-   *  F = Astral Construct (Flying Enemy)
-   *  B = Seraph Vael, Warden of the Eclipse (Stage 10 Boss)
+   *  E = Void Stalker (Aggressive Lunge Patrol Enemy)
+   *  C = Crimson Vanguard (Shield-Counter Charger Enemy)
+   *  F = Astral Construct (Aimed Bolt Flying Enemy)
+   *  D = Mantis Duelist (Fast Scythe Lunge & Counter Duelist)
+   *  M = Sanctum Acolyte (Teleporting Void-Orb Mage)
+   *  B = Seraph Vael, Warden of the Eclipse (Stage 12 Boss)
    */
   
-  function buildStage9Labyrinth() {
+  function buildStage5CrimsonBastion() {
+    const cols = 80;
+    const rows = 36;
+    const g = Array.from({ length: rows }, () => Array(cols).fill("."));
+  
+    const fillRect = (r1, c1, r2, c2, ch = "#") => {
+      for (let r = Math.max(0, r1); r <= Math.min(rows - 1, r2); r++) {
+        for (let c = Math.max(0, c1); c <= Math.min(cols - 1, c2); c++) {
+          g[r][c] = ch;
+        }
+      }
+    };
+  
+    // Outer bastion walls & floor
+    fillRect(0, 0, rows - 1, cols - 1, "#");
+    fillRect(2, 2, rows - 5, cols - 3, ".");
+  
+    // Right exit corridor (rows 22..25 on right border)
+    fillRect(22, cols - 3, 25, cols - 1, ".");
+    fillRect(26, 66, 31, cols - 1, "#");
+  
+    // Entry Courtyard (Left Wing, cols 2..24)
+    fillRect(28, 2, 31, 14, "#");
+    g[27][5] = "P";
+    g[27][11] = "E";
+  
+    // Spike moat & stepping battlements
+    fillRect(31, 15, 31, 25, "^");
+    fillRect(26, 17, 27, 22, "#");
+    g[25][19] = "C";
+  
+    // Lower Dungeon & Central Ascent (cols 26..44)
+    fillRect(28, 26, 31, 38, "#");
+    g[27][31] = "D";
+    fillRect(22, 28, 23, 35, "#");
+    fillRect(17, 22, 18, 27, "#");
+    g[16][24] = "F";
+  
+    // Upper West Alcove -> Hidden Starlight Relic #2
+    fillRect(12, 6, 13, 18, "#");
+    fillRect(13, 19, 13, 22, "^");
+    g[11][14] = "C";
+    g[11][8] = "R";
+  
+    // Central Citadel Keep & Attunement Shrine (cols 36..52, rows 15..20)
+    fillRect(18, 36, 20, 52, "#");
+    g[17][43] = "K"; // Mid-fortress Attunement Shrine!
+  
+    // High Battlements & Guard Tower (cols 48..76)
+    fillRect(12, 48, 13, 60, "#");
+    g[11][54] = "D";
+    g[10][63] = "F";
+  
+    // Lower East Gauntlet leading to the Sealed Bastion Gate
+    fillRect(31, 39, 31, 65, "^");
+    fillRect(26, 44, 27, 51, "#");
+    g[25][48] = "C";
+  
+    fillRect(26, 56, 27, 63, "#");
+    g[25][60] = "D";
+    g[20][59] = "F";
+  
+    // Sealed Runic Gate guarding the Bastion Exit
+    fillRect(18, 66, 21, 79, "#");
+    for (let r = 22; r <= 25; r++) {
+      g[r][72] = "G";
+    }
+    g[25][68] = "C";
+  
+    return {
+      exitY: 184,
+      prompts: [
+        { x: 32, y: 196, text: "CRIMSON CITADEL - FIND THE KEEP SHRINE" },
+        { x: 310, y: 120, text: "SHRINE RESTORES HP & BINDS RESPAWN" }
+      ],
+      grid: g.map((row) => row.join(""))
+    };
+  }
+  
+  function buildStage11Labyrinth() {
     const cols = 120;
     const rows = 60;
     const g = Array.from({ length: rows }, () => Array(cols).fill("."));
@@ -3229,7 +4215,7 @@
     // Central Hub (Rows 21..38)
     fillRect(35, 2, 38, 27, "#");
     g[34][6] = "P";
-    g[34][15] = "K";
+    g[34][15] = "K"; // Grand Labyrinth Attunement Shrine
   
     // Left Shaft stepping ledges
     fillRect(35, 30, 35, 33, "#");
@@ -3247,7 +4233,7 @@
     fillRect(38, 58, 38, 65, "^");
     g[31][61] = "F";
   
-    g[34][53] = "E";
+    g[34][53] = "D";
     g[34][71] = "C";
   
     // Right-Center Shaft stepping ledges
@@ -3256,7 +4242,7 @@
     fillRect(25, 80, 25, 83, "#");
     fillRect(20, 77, 20, 80, "#");
   
-    // Grand Sanctum Corridor leading to Stage 10 Boss Arena
+    // Grand Sanctum Corridor leading to Stage 12 Boss Arena
     fillRect(21, 84, 30, 119, "#");
     fillRect(35, 84, 38, 119, "#");
     fillRect(31, 84, 34, 119, ".");
@@ -3270,7 +4256,7 @@
     fillRect(9, 3, 9, 8, "#");
     fillRect(18, 3, 18, 26, "^");
     g[8][5] = "Q";
-    g[11][12] = "E";
+    g[11][12] = "M";
     g[10][21] = "F";
   
     // Top-Right Wing -> Key #2
@@ -3282,6 +4268,7 @@
     fillRect(15, 64, 18, 74, "#");
     fillRect(18, 59, 18, 63, "^");
     g[11][61] = "F";
+    g[14][69] = "M";
   
     fillRect(15, 85, 18, 92, "#");
     fillRect(18, 93, 18, 106, "^");
@@ -3297,7 +4284,7 @@
   
     fillRect(55, 4, 58, 15, "#");
     fillRect(56, 16, 56, 19, "^");
-    g[54][9] = "E";
+    g[54][9] = "D";
     g[54][5] = "R";
   
     fillRect(55, 44, 58, 54, "#");
@@ -3307,7 +4294,7 @@
     fillRect(55, 62, 58, 74, "#");
     fillRect(56, 55, 56, 61, "^");
     g[51][58] = "F";
-    g[54][68] = "E";
+    g[54][68] = "M";
   
     fillRect(45, 78, 45, 82, "#");
     fillRect(50, 77, 50, 81, "#");
@@ -3317,7 +4304,7 @@
     fillRect(52, 91, 52, 95, "#");
     g[49][99] = "F";
     fillRect(52, 106, 58, 116, "#");
-    g[51][109] = "C";
+    g[51][109] = "D";
     g[51][114] = "Q";
   
     return {
@@ -3327,13 +4314,13 @@
     };
   }
   const STAGES = [
-    // STAGE 1: SILENT PRECIPICE (Movement, Jump & Dash Tutorial)
+    // STAGE 1 (CH. I): SILENT PRECIPICE (Movement, Jump, Dash & First Attunement Shrine)
     {
       exitY: 124,
       prompts: [
-        { x: 14, y: 112, text: "[ARROWS/WASD] MOVE" },
-        { x: 98, y: 92, text: "[Z/SPACE] JUMP" },
-        { x: 198, y: 102, text: "[C/SHIFT] DASH" }
+        { x: 14, y: 112, text: "[ARROWS/WASD] MOVE   SHRINE ATTUNES RESPAWN" },
+        { x: 108, y: 92, text: "[Z/SPACE] JUMP" },
+        { x: 204, y: 102, text: "[C/SHIFT] DASH" }
       ],
       grid: [
         "########################################",
@@ -3353,7 +4340,7 @@
         "#.......................................",
         "#.........######..#####.................",
         "#.........######..#####.................",
-        "#..P......######..#####.................",
+        "#..P...K..######..#####.................",
         "############################^^^^########",
         "########################################",
         "########################################",
@@ -3362,11 +4349,11 @@
       ]
     },
   
-    // STAGE 2: CELESTIAL SHRINE (Unlock Astral Blade & Unseal Barrier)
+    // STAGE 2 (CH. II): CELESTIAL SHRINE (Unlock Astral Blade & 3-Hit Combo)
     {
       exitY: 108,
       prompts: [
-        { x: 82, y: 58, text: "[X/J] SLASH COMBO", reqSword: true },
+        { x: 74, y: 58, text: "[X/J] 3-HIT SOLAR COMBO!", reqSword: true },
         { x: 182, y: 82, text: "[DOWN+X] POGO BOUNCE", reqSword: true }
       ],
       grid: [
@@ -3396,10 +4383,12 @@
       ]
     },
   
-    // STAGE 3: FIRST BLOOD (Patrol Stalkers & Relic #1 Alcove)
+    // STAGE 3 (CH. III): FIRST BLOOD (Patrol Stalkers, Hold-to-Focus Heal & Relic #1)
     {
       exitY: 108,
-      prompts: [{ x: 24, y: 98, text: "[V/F] SOUL WAVE OR HEAL" }],
+      prompts: [
+        { x: 16, y: 98, text: "TAP [V/F] SOUL WAVE   HOLD [V/F] FOCUS HEAL" }
+      ],
       grid: [
         "########################################",
         "#......................................#",
@@ -3427,7 +4416,7 @@
       ]
     },
   
-    // STAGE 4: WINDWARD CHASM (Down-Slash Pogo Across Chasms & Flyers)
+    // STAGE 4 (CH. IV): WINDWARD CHASM (Down-Slash Pogo Across Chasms & Flyers)
     {
       exitY: 100,
       prompts: [{ x: 64, y: 54, text: "[DOWN+X] POGO REFRESHES DASH" }],
@@ -3458,38 +4447,10 @@
       ]
     },
   
-    // STAGE 5: CRIMSON BASTION (Charger Arena & Relic #2)
-    {
-      exitY: 108,
-      prompts: [],
-      grid: [
-        "########################################",
-        "#......................................#",
-        "#......................................#",
-        "#......................................#",
-        "#......................................#",
-        "#..................R...................#",
-        "#................#####.................#",
-        "#......................................#",
-        "#......................................#",
-        "#..............E.......................#",
-        "#...........#######....................#",
-        "#.............................##########",
-        "#..................................G....",
-        "#..................................G....",
-        "#..P...................C...........G....",
-        "########...#################...#########",
-        "########^^^#################^^^#########",
-        "########################################",
-        "########################################",
-        "########################################",
-        "########################################",
-        "########################################",
-        "########################################"
-      ]
-    },
+    // STAGE 5 (CH. V): CRIMSON BASTION (Expanded 80x36 Citadel + Keep Attunement Shrine + Relic #2)
+    buildStage5CrimsonBastion(),
   
-    // STAGE 6: SHATTERED ARCHES (Aerial Flyers, Pogo Chains & Relic #3)
+    // STAGE 6 (CH. VI): SHATTERED ARCHES (Aerial Flyers, Pogo Chains & Relic #3)
     {
       exitY: 84,
       prompts: [],
@@ -3520,7 +4481,38 @@
       ]
     },
   
-    // STAGE 7: TWIN CONDUITS (Dual Crimson Chargers & Sealed Gate)
+    // STAGE 7 (CH. VII): MANTIS CLOISTER (New Stage - Agile Mantis Duelists!)
+    {
+      exitY: 100,
+      prompts: [{ x: 36, y: 56, text: "BEWARE THE MANTIS DUELISTS" }],
+      grid: [
+        "########################################",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#................D.....................#",
+        "#.............#######..................#",
+        "#......................................#",
+        "#.............................##########",
+        "#..................................G....",
+        "#..................................G....",
+        "#..P..........D.............D......G....",
+        "#######....#######.......#######.#######",
+        "#######....#######.......#######.#######",
+        "#######^^^^#######^^^^^^^#######^#######",
+        "########################################",
+        "########################################",
+        "########################################",
+        "########################################",
+        "########################################",
+        "########################################"
+      ]
+    },
+  
+    // STAGE 8 (CH. VIII): TWIN CONDUITS (Dual Crimson Chargers & Sealed Gate)
     {
       exitY: 100,
       prompts: [],
@@ -3551,7 +4543,38 @@
       ]
     },
   
-    // STAGE 8: SANCTUM THRESHOLD (Gauntlet & Relic #4)
+    // STAGE 9 (CH. IX): ASTRAL OBSERVATORY (New Stage - Teleporting Sanctum Acolytes!)
+    {
+      exitY: 92,
+      prompts: [{ x: 40, y: 44, text: "SLASH ENEMY ORBS TO PARRY & GAIN SOUL" }],
+      grid: [
+        "########################################",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#......................................#",
+        "#............M............M............#",
+        "#.........######.......######..........#",
+        "#......................................#",
+        "#.............................##########",
+        "#..................................G....",
+        "#..................................G....",
+        "#..P..........D............M.......#####",
+        "#######....#######.....#######.#########",
+        "#######....#######.....#######.#########",
+        "#######^^^^#######^^^^^#######^#########",
+        "########################################",
+        "########################################",
+        "########################################",
+        "########################################",
+        "########################################",
+        "########################################"
+      ]
+    },
+  
+    // STAGE 10 (CH. X): SANCTUM THRESHOLD (Gauntlet & Relic #4)
     {
       exitY: 92,
       prompts: [],
@@ -3569,7 +4592,7 @@
         "#..............F...................G....",
         "#..................................G....",
         "#..................................G....",
-        "#..P..........C........C...........#####",
+        "#..P..........C........D...........#####",
         "########..#######....#######..##########",
         "########..#######....#######..##########",
         "########^^#######^^^^#######^^##########",
@@ -3582,10 +4605,10 @@
       ]
     },
   
-    // STAGE 9: THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania)
-    buildStage9Labyrinth(),
+    // STAGE 11 (CH. XI): THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania + Shrine)
+    buildStage11Labyrinth(),
   
-    // STAGE 10: ECLIPSE SANCTUM (Final Boss Arena - Seraph Vael)
+    // STAGE 12 (CH. XII): ECLIPSE SANCTUM (Final Boss Arena - Seraph Vael)
     {
       exitY: 108,
       prompts: [{ x: 96, y: 38, text: "VANQUISH SERAPH VAEL" }],
@@ -3620,7 +4643,7 @@
   // --- Module: src/world/LevelManager.js ---
   /**
    * Tilemap loader, neighbor-aware autotiler, collision detector,
-   * and stage lifecycle manager.
+   * and stage lifecycle manager with persistent HP across stage transitions.
    */
   class LevelManager {
     constructor(game) {
@@ -3647,15 +4670,18 @@
       return BIOME_THEMES[meta.biome] || BIOME_THEMES.precipice;
     }
   
-    load(index, useCheckpointPos = false) {
+    load(index, useCheckpointPos = false, restoreFullHp = false) {
       this.currentIndex = Math.max(0, Math.min(STAGES.length - 1, index));
       this.game.saveManager.unlockStage(this.currentIndex);
   
       // Select biome soundtrack
-      if (this.currentIndex === 9) {
+      const meta = STAGE_METADATA[this.currentIndex] || STAGE_METADATA[0];
+      if (meta.biome === "eclipse") {
         this.game.sound.setTrack("boss");
-      } else if (this.currentIndex === 8) {
+      } else if (meta.biome === "labyrinth") {
         this.game.sound.setTrack("labyrinth");
+      } else if (meta.biome === "spire") {
+        this.game.sound.setTrack("bastion");
       } else {
         this.game.sound.setTrack("exploration");
       }
@@ -3668,7 +4694,11 @@
         this.game.player.swordShrineClaimed = true;
       }
   
-      this.game.player.hp = this.game.player.maxHp;
+      // Only restore full HP on new run, shrine respawn, or shrine warp — NOT when walking between stages!
+      if (restoreFullHp || this.game.player.hp <= 0) {
+        this.game.player.hp = this.game.player.maxHp;
+      }
+  
       if (!useCheckpointPos) {
         this.game.player.keysCollected = 0;
       }
@@ -3708,12 +4738,15 @@
           } else if (ch === "S") {
             this.pedestal = { x: wx, y: wy };
           } else if (ch === "K") {
+            const isShrineActive =
+              (useCheckpointPos && this.game.checkpointStage === this.currentIndex) ||
+              this.game.saveManager.hasShrine(this.currentIndex);
             this.checkpoint = {
               x: wx,
               y: wy,
-              activated: useCheckpointPos && this.game.checkpointStage === this.currentIndex
+              activated: isShrineActive
             };
-            if (this.checkpoint.activated) {
+            if (useCheckpointPos) {
               this.game.player.spawnX = wx;
               this.game.player.spawnY = wy - 1;
               this.game.player.resetToSpawn();
@@ -3747,6 +4780,10 @@
             this.enemies.push(new Enemy(wx, wy - 2, "charger"));
           } else if (ch === "F") {
             this.enemies.push(new Enemy(wx, wy, "flyer"));
+          } else if (ch === "D") {
+            this.enemies.push(new Enemy(wx, wy - 4, "duelist"));
+          } else if (ch === "M") {
+            this.enemies.push(new Enemy(wx, wy - 4, "mage"));
           } else if (ch === "B") {
             this.boss = new Boss(wx, wy - 10, this.game);
           }
@@ -3848,10 +4885,10 @@
         );
       }
   
-      // Advance to next stage when crossing right exit boundary
+      // Advance to next stage when crossing right exit boundary (KEEPING current HP!)
       if (player.x > this.cols * VIEWPORT.TILE - 4) {
         if (this.currentIndex < STAGES.length - 1) {
-          this.load(this.currentIndex + 1, false);
+          this.load(this.currentIndex + 1, false, false);
         }
       }
     }
@@ -3897,7 +4934,6 @@
               ctx.fillRect(wx + VIEWPORT.TILE - 1, wy, 1, VIEWPORT.TILE);
             }
             if (!openTop && !openBottom && !openLeft && !openRight) {
-              // Subtle varied masonry texture on interior blocks
               if ((r + c) % 3 === 0) {
                 ctx.fillStyle = theme.tileEdge;
                 ctx.fillRect(wx + 2, wy + 2, 2, 1);
@@ -3921,13 +4957,13 @@
       for (const p of this.prompts) {
         if (p.reqSword && !player.hasSword) continue;
         if (p.hideOnSword && player.hasSword) continue;
-        if (player.x > p.x + 115) continue;
+        if (player.x > p.x + 150) continue;
         const bobY = p.y + Math.round(Math.sin(this.tick * 0.06) * 1.5);
         const color = p.reqSword ? PALETTE.swordGlow : PALETTE.textSubtle;
         drawPixelText(ctx, p.text, p.x, bobY, color, PALETTE.textShadow);
       }
   
-      // Right exit indicator (for stages 1-9)
+      // Right exit indicator (for stages 1-11)
       if (this.currentIndex < STAGES.length - 1) {
         const bobX = Math.round(Math.sin(this.tick * 0.1) * 2);
         drawPixelText(
@@ -3960,7 +4996,7 @@
         }
       }
   
-      // Checkpoint Shrine
+      // Attunement Checkpoint Shrine
       if (this.checkpoint) {
         const cx = this.checkpoint.x;
         const cy = this.checkpoint.y;
@@ -3971,11 +5007,11 @@
           ctx.fillRect(cx + 2, cy - 36, 4, 44);
         }
         ctx.fillStyle = theme.tileHighlight;
-        ctx.fillRect(cx, cy + 5, 8, 3);
+        ctx.fillRect(cx - 1, cy + 5, 10, 3);
         ctx.fillStyle = this.checkpoint.activated ? PALETTE.playerNoDash : PALETTE.textSubtle;
-        ctx.fillRect(cx + 2, cy - 1, 4, 6);
+        ctx.fillRect(cx + 2, cy - 2, 4, 7);
         ctx.fillStyle = this.checkpoint.activated ? PALETTE.white : theme.tileEdge;
-        ctx.fillRect(cx + 3, cy - 3, 2, 2);
+        ctx.fillRect(cx + 3, cy - 5, 2, 3);
       }
   
       // Starlight Relics
@@ -4020,7 +5056,7 @@
         enemy.draw(ctx);
       }
   
-      // Stage 10 Boss
+      // Stage 12 Boss
       if (this.boss && !this.boss.dead) {
         this.boss.draw(ctx);
       }
@@ -4048,8 +5084,8 @@
   }
   
   /**
-   * Renders the in-game HUD, Boss health bar, Stage banners,
-   * Title screen, Pause overlay, Stage Select, Controls guide, and Victory screen.
+   * Renders the in-game HUD, Soul Focus progress bar, Boss health bar, Stage banners,
+   * Title screen, Pause overlay, Shrine Warp menu, Controls guide, and Victory screen.
    */
   class HUDRenderer {
     constructor(game) {
@@ -4079,7 +5115,7 @@
       drawPixelText(
         ctx,
         formatFramesToTime(this.game.runFrames),
-        38,
+        42,
         7,
         PALETTE.textBright,
         PALETTE.textShadow
@@ -4088,8 +5124,18 @@
       const relicsCount = saveManager.data.relicsFound.length;
       drawPixelText(ctx, `*${relicsCount}/5`, 8, 15, PALETTE.relicCyan, PALETTE.textShadow);
   
+      const boundMeta = STAGE_METADATA[this.game.checkpointStage || 0] || STAGE_METADATA[0];
+      drawPixelText(
+        ctx,
+        `SHRINE:${boundMeta.numeral}`,
+        42,
+        15,
+        PALETTE.playerNoDash,
+        PALETTE.textShadow
+      );
+  
       if (this.game.sound.muted) {
-        drawPixelText(ctx, "MUTE", 38, 15, PALETTE.playerHair, PALETTE.textShadow);
+        drawPixelText(ctx, "MUTE", 98, 15, PALETTE.playerHair, PALETTE.textShadow);
       }
   
       // Top-Right: Hearts
@@ -4113,18 +5159,44 @@
       if (fillW > 0) {
         const canHeal = player.soul >= PLAYER_CONFIG.SOUL_HEAL_COST;
         const canWave = player.soul >= PLAYER_CONFIG.SOUL_WAVE_COST;
-        ctx.fillStyle = canHeal
-          ? PALETTE.white
-          : canWave
-            ? PALETTE.soulCyan
-            : PALETTE.playerCloak;
+        ctx.fillStyle =
+          player.focusTimer > 0 && player.focusTimer % 4 < 2
+            ? PALETTE.white
+            : canHeal
+              ? PALETTE.white
+              : canWave
+                ? PALETTE.soulCyan
+                : PALETTE.playerCloak;
         ctx.fillRect(barX + 1, barY + 1, fillW, 2);
+      }
+  
+      // Soul Focus Channeling Progress Bar under Soul Gauge when holding to heal!
+      if (player.focusTimer > 0) {
+        const focusRatio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
+        const focusW = Math.round(focusRatio * (barW - 2));
+        ctx.fillStyle = PALETTE.textShadow;
+        ctx.fillRect(barX, barY + 5, barW, 3);
+        ctx.fillStyle = PALETTE.white;
+        ctx.fillRect(barX + 1, barY + 6, focusW, 1);
+      } else if (
+        player.hp < player.maxHp &&
+        player.soul >= PLAYER_CONFIG.SOUL_HEAL_COST &&
+        this.game.uiTick % 40 < 26
+      ) {
+        drawPixelText(
+          ctx,
+          "HOLD [V/F] HEAL",
+          startX - 48,
+          barY + 5,
+          PALETTE.soulCyan,
+          PALETTE.textShadow
+        );
       }
   
       // Sanctum Keys beneath Soul Bar
       for (let i = 0; i < player.keysCollected; i++) {
         const kx = startX + i * 10 + 1;
-        const ky = startY + 15;
+        const ky = startY + 16;
         ctx.fillStyle = PALETTE.textShadow;
         ctx.fillRect(kx + 1, ky + 1, 5, 5);
         ctx.fillStyle = PALETTE.swordGlow;
@@ -4139,7 +5211,7 @@
         this.drawStageBanner(ctx, meta, level.bannerTimer);
       }
   
-      // Stage 10 Boss Health Bar
+      // Stage 12 Boss Health Bar
       if (level.boss && !level.boss.dead) {
         this.drawBossBar(ctx, level.boss);
       }
@@ -4153,10 +5225,10 @@
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.fillStyle = "rgba(9, 10, 20, 0.72)";
-      ctx.fillRect(50, 26, VIEWPORT.WIDTH - 100, 25);
+      ctx.fillRect(46, 26, VIEWPORT.WIDTH - 92, 25);
       ctx.fillStyle = PALETTE.swordGlow;
-      ctx.fillRect(50, 26, VIEWPORT.WIDTH - 100, 1);
-      ctx.fillRect(50, 50, VIEWPORT.WIDTH - 100, 1);
+      ctx.fillRect(46, 26, VIEWPORT.WIDTH - 92, 1);
+      ctx.fillRect(46, 50, VIEWPORT.WIDTH - 92, 1);
   
       drawPixelTextCentered(
         ctx,
@@ -4253,7 +5325,7 @@
       );
   
       // Menu Box
-      const boxW = 156;
+      const boxW = 166;
       const boxH = 74;
       const boxX = Math.floor((VIEWPORT.WIDTH - boxW) / 2);
       const boxY = 56;
@@ -4306,45 +5378,75 @@
   
     drawStageSelect(ctx) {
       const { menuIndex, saveManager } = this.game;
-      ctx.fillStyle = "rgba(9, 10, 20, 0.88)";
+      ctx.fillStyle = "rgba(9, 10, 20, 0.90)";
       ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
   
       drawPixelTextCentered(
         ctx,
-        "SELECT CHAPTER",
+        "ATTUNEMENT SHRINE WARP",
         VIEWPORT.WIDTH / 2,
-        12,
+        14,
         PALETTE.swordGlow,
         PALETTE.textShadow
       );
+      drawPixelTextCentered(
+        ctx,
+        "ONLY ATTUNED SHRINES CAN BE WARPED TO OR RESPAWNED AT",
+        VIEWPORT.WIDTH / 2,
+        26,
+        PALETTE.playerNoDash,
+        PALETTE.textShadow
+      );
   
-      const unlocked = saveManager.data.highestStageUnlocked;
-      for (let i = 0; i < STAGE_METADATA.length; i++) {
-        const meta = STAGE_METADATA[i];
-        const isUnlocked = i <= unlocked;
+      for (let i = 0; i < SHRINE_CHAPTERS.length; i++) {
+        const shrine = SHRINE_CHAPTERS[i];
+        const isUnlocked = saveManager.hasShrine(shrine.stageIndex);
         const selected = i === menuIndex;
-        const col = i < 5 ? 0 : 1;
-        const row = i % 5;
-        const x = col === 0 ? 22 : 168;
-        const y = 34 + row * 22;
+        const x = 40;
+        const y = 44 + i * 34;
+        const w = 240;
+        const h = 26;
   
-        ctx.fillStyle = selected ? "rgba(56, 103, 214, 0.35)" : "rgba(26, 32, 56, 0.65)";
-        ctx.fillRect(x, y, 130, 17);
+        ctx.fillStyle = selected ? "rgba(56, 103, 214, 0.38)" : "rgba(26, 32, 56, 0.72)";
+        ctx.fillRect(x, y, w, h);
         ctx.fillStyle = selected ? PALETTE.swordGlow : PALETTE.tileEdge;
-        ctx.fillRect(x, y, 130, 1);
+        ctx.fillRect(x, y, w, 1);
+        ctx.fillRect(x, y + h - 1, w, 1);
   
-        const label = isUnlocked ? `${meta.numeral}. ${meta.title}` : `${meta.numeral}. LOCKED`;
-        const color = !isUnlocked
-          ? PALETTE.textSubtle
-          : selected
-            ? PALETTE.swordGlow
-            : PALETTE.textBright;
-        drawPixelText(ctx, label, x + 6, y + 6, color, PALETTE.textShadow);
+        // Shrine Beacon Icon on Left
+        ctx.fillStyle = isUnlocked ? PALETTE.playerNoDash : PALETTE.heartEmpty;
+        ctx.fillRect(x + 10, y + 7, 4, 12);
+        ctx.fillStyle = isUnlocked ? PALETTE.white : PALETTE.textSubtle;
+        ctx.fillRect(x + 11, y + 4, 2, 3);
+  
+        const title = isUnlocked
+          ? `CH.${shrine.numeral} - ${shrine.name}`
+          : `CH.${shrine.numeral} - UNATTUNED SHRINE (LOCKED)`;
+        const subtitle = isUnlocked
+          ? `${shrine.subtitle} - FULL HP RESTORE`
+          : "DISCOVER & ATTUNE THIS SHRINE IN THE REALM FIRST";
+  
+        drawPixelText(
+          ctx,
+          title,
+          x + 22,
+          y + 6,
+          !isUnlocked ? PALETTE.textSubtle : selected ? PALETTE.swordGlow : PALETTE.textBright,
+          PALETTE.textShadow
+        );
+        drawPixelText(
+          ctx,
+          subtitle,
+          x + 22,
+          y + 15,
+          isUnlocked ? PALETTE.playerNoDash : PALETTE.heartEmpty,
+          PALETTE.textShadow
+        );
       }
   
       drawPixelTextCentered(
         ctx,
-        "[Z/ENTER] LAUNCH STAGE   [ESC/X] BACK TO TITLE",
+        "[Z/ENTER] WARP TO SHRINE   [ESC/X] BACK TO TITLE",
         VIEWPORT.WIDTH / 2,
         158,
         PALETTE.textSubtle,
@@ -4360,7 +5462,7 @@
         ctx,
         "CONTROLS & COMBAT GUIDE",
         VIEWPORT.WIDTH / 2,
-        14,
+        12,
         PALETTE.swordGlow,
         PALETTE.textShadow
       );
@@ -4368,25 +5470,25 @@
       const lines = [
         ["MOVE / AIM:", "ARROW KEYS OR WASD"],
         ["JUMP / WALL-JUMP:", "Z, SPACE, OR K"],
-        ["BLADE SLASH (3-COMBO):", "X OR J (4 DIRECTIONS)"],
+        ["3-HIT SOLAR COMBO:", "X OR J (3RD HIT = 2X DMG)"],
         ["AERIAL POGO BOUNCE:", "HOLD DOWN + SLASH IN AIR"],
-        ["ASTRAL DASH (I-FRAMES):", "C, SHIFT, OR L"],
-        ["SOUL WAVE PROJECTILE:", "V, F, OR I (45% SOUL)"],
-        ["SOUL FOCUS HEAL (+1 HP):", "UP/DOWN + V/F (60% SOUL)"],
-        ["PAUSE / QUICK RETRY:", "ESC/P TO PAUSE, R TO RETRY"]
+        ["ASTRAL DASH (I-FRAMES):", "C, SHIFT, OR L (HORIZONTAL)"],
+        ["ASTRAL WAVE (TAP):", "TAP V, F, OR I (45% SOUL)"],
+        ["SOUL FOCUS HEAL (HOLD):", "HOLD V/F ON GROUND (60% SOUL)"],
+        ["SHRINES & DEATH:", "SHRINES HEAL & BIND RESPAWN"]
       ];
   
       for (let i = 0; i < lines.length; i++) {
-        const y = 34 + i * 14;
-        drawPixelText(ctx, lines[i][0], 24, y, PALETTE.playerNoDash, PALETTE.textShadow);
-        drawPixelText(ctx, lines[i][1], 158, y, PALETTE.textBright, PALETTE.textShadow);
+        const y = 30 + i * 14;
+        drawPixelText(ctx, lines[i][0], 18, y, PALETTE.playerNoDash, PALETTE.textShadow);
+        drawPixelText(ctx, lines[i][1], 152, y, PALETTE.textBright, PALETTE.textShadow);
       }
   
       drawPixelTextCentered(
         ctx,
-        "COLLECT 3 STARLIGHT RELICS (*) TO UPGRADE MAX HEARTS TO 4!",
+        "HP PERSISTS ACROSS STAGES! HOLD [V/F] STILL TO FOCUS HEAL!",
         VIEWPORT.WIDTH / 2,
-        150,
+        148,
         PALETTE.relicCyan,
         PALETTE.textShadow
       );
@@ -4394,7 +5496,7 @@
         ctx,
         "[ESC / ENTER / Z] RETURN TO TITLE",
         VIEWPORT.WIDTH / 2,
-        164,
+        162,
         PALETTE.swordGlow,
         PALETTE.textShadow
       );
@@ -4405,7 +5507,7 @@
       ctx.fillStyle = "rgba(9, 10, 20, 0.78)";
       ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
   
-      const boxW = 152;
+      const boxW = 168;
       const boxH = 98;
       const boxX = Math.floor((VIEWPORT.WIDTH - boxW) / 2);
       const boxY = Math.floor((VIEWPORT.HEIGHT - boxH) / 2);
@@ -4466,7 +5568,7 @@
   
       const relics = saveManager.data.relicsFound.length;
       let rank = "B";
-      if (runDeaths <= 2 && runFrames < 60 * 300) rank = "S";
+      if (runDeaths <= 2 && runFrames < 60 * 360) rank = "S";
       else if (runDeaths <= 6) rank = "A";
   
       const stats = [
@@ -4487,7 +5589,7 @@
         );
       }
   
-      const options = ["PLAY AGAIN (NEW RUN)", "STAGE SELECT", "RETURN TO TITLE"];
+      const options = ["PLAY AGAIN (NEW RUN)", "WARP TO SHRINE", "RETURN TO TITLE"];
       for (let i = 0; i < options.length; i++) {
         const selected = i === menuIndex;
         const label = selected ? `> ${options[i]} <` : options[i];
@@ -4533,6 +5635,15 @@
           ctx.fillStyle = PALETTE.playerHair;
           ctx.fillRect(Math.round(s.x), Math.round(s.y), s.size, s.size);
         }
+        const boundMeta = STAGE_METADATA[this.game.checkpointStage || 0] || STAGE_METADATA[0];
+        drawPixelTextCentered(
+          ctx,
+          `RETURNING TO SHRINE ${boundMeta.numeral} (${boundMeta.title})...`,
+          VIEWPORT.WIDTH / 2,
+          VIEWPORT.HEIGHT - 28,
+          PALETTE.playerNoDash,
+          PALETTE.textShadow
+        );
       }
     }
   }
@@ -4540,7 +5651,7 @@
   // --- Module: src/core/Game.js ---
   /**
    * Primary game coordinator managing the fixed-timestep loop,
-   * state transitions, menus, and death/victory sequences.
+   * state transitions, Attunement Shrine respawns/warping, menus, and death/victory sequences.
    */
   class Game {
     constructor(canvas, viewportFrame) {
@@ -4575,7 +5686,8 @@
       this.runDeaths = 0;
       this.victoryDelayTimer = 0;
   
-      this.checkpointStage = null;
+      // Active Attunement Shrine respawn state (defaults to Shrine I on Stage 0)
+      this.checkpointStage = this.saveManager.data.lastShrineStage || 0;
       this.checkpointX = 0;
       this.checkpointY = 0;
   
@@ -4589,12 +5701,19 @@
       };
   
       // Preload background stage for title screen ambiance
-      this.level.load(this.saveManager.data.lastStagePlayed || 0);
+      this.level.load(this.checkpointStage, true, true);
   
       this.lastTime = performance.now();
       this.accumulator = 0;
   
       requestAnimationFrame((t) => this.loop(t));
+    }
+  
+    bindCheckpoint(stageIndex, x, y) {
+      this.checkpointStage = stageIndex;
+      this.checkpointX = x;
+      this.checkpointY = y;
+      this.saveManager.unlockShrine(stageIndex);
     }
   
     applyCRTPreference() {
@@ -4621,12 +5740,12 @@
     }
   
     getTitleMenuItems() {
-      const lastStage = this.saveManager.data.lastStagePlayed || 0;
-      const meta = STAGE_METADATA[lastStage] || STAGE_METADATA[0];
+      const shrineStage = this.saveManager.data.lastShrineStage || 0;
+      const meta = STAGE_METADATA[shrineStage] || STAGE_METADATA[0];
       return [
-        `CONTINUE (CH.${meta.numeral})`,
+        `CONTINUE (SHRINE ${meta.numeral})`,
         "NEW JOURNEY",
-        "SELECT CHAPTER",
+        "WARP TO SHRINE",
         "CONTROLS & GUIDE",
         `AUDIO: ${this.sound.muted ? "MUTED" : "ON"}`
       ];
@@ -4635,8 +5754,8 @@
     getPauseMenuItems() {
       return [
         "RESUME GAME",
-        "RETRY STAGE",
-        "SELECT CHAPTER",
+        "RETURN TO LAST SHRINE",
+        "WARP TO SHRINE",
         `AUDIO: ${this.sound.muted ? "MUTED" : "ON"}`,
         `CRT SCANLINES: ${this.saveManager.data.crtEnabled ? "ON" : "OFF"}`,
         "RETURN TO TITLE"
@@ -4646,16 +5765,23 @@
     startNewJourney() {
       this.runFrames = 0;
       this.runDeaths = 0;
-      this.checkpointStage = null;
+      this.checkpointStage = 0;
+      this.saveManager.unlockShrine(0);
       this.player.soul = 0;
-      this.level.load(0, false);
+      this.level.load(0, true, true);
       this.state = GAME_STATE.PLAYING;
     }
   
     continueJourney() {
-      const stageIdx = this.saveManager.data.lastStagePlayed || 0;
-      this.level.load(stageIdx, false);
+      const shrineStage = this.saveManager.data.lastShrineStage || 0;
+      this.checkpointStage = shrineStage;
+      this.level.load(shrineStage, true, true);
       this.state = GAME_STATE.PLAYING;
+    }
+  
+    respawnAtActiveShrine() {
+      const targetStage = this.checkpointStage !== null ? this.checkpointStage : 0;
+      this.level.load(targetStage, true, true);
     }
   
     onBossDefeated() {
@@ -4706,14 +5832,12 @@
         }
       }
   
-      // Respawn on the current stage (or active checkpoint shrine) rather than wiping progress
+      // Respawn back at the last attuned Shrine with full HP (Hollow Knight bench style!)
       if (ds.timer >= 86) {
         ds.active = false;
         ds.fadeAlpha = 1.0;
         this.sound.duckMusic = false;
-  
-        const useCheckpoint = this.checkpointStage === this.level.currentIndex;
-        this.level.load(this.level.currentIndex, useCheckpoint);
+        this.respawnAtActiveShrine();
       }
     }
   
@@ -4736,7 +5860,7 @@
             this.startNewJourney();
           } else if (this.menuIndex === 2) {
             this.state = GAME_STATE.STAGE_SELECT;
-            this.menuIndex = this.saveManager.data.lastStagePlayed || 0;
+            this.menuIndex = 0;
           } else if (this.menuIndex === 3) {
             this.state = GAME_STATE.CONTROLS;
           } else if (this.menuIndex === 4) {
@@ -4744,20 +5868,20 @@
           }
         }
       } else if (this.state === GAME_STATE.STAGE_SELECT) {
-        const total = STAGE_METADATA.length;
+        const total = SHRINE_CHAPTERS.length;
         if (this.input.actionPressed("up")) {
           this.menuIndex = (this.menuIndex - 1 + total) % total;
           this.sound.playMenuMove();
         } else if (this.input.actionPressed("down")) {
           this.menuIndex = (this.menuIndex + 1) % total;
           this.sound.playMenuMove();
-        } else if (this.input.actionPressed("left") || this.input.actionPressed("right")) {
-          this.menuIndex = (this.menuIndex + 5) % total;
-          this.sound.playMenuMove();
         } else if (this.input.actionPressed("confirm")) {
-          if (this.menuIndex <= this.saveManager.data.highestStageUnlocked) {
+          const chosenShrine = SHRINE_CHAPTERS[this.menuIndex];
+          if (chosenShrine && this.saveManager.hasShrine(chosenShrine.stageIndex)) {
             this.sound.playMenuSelect();
-            this.level.load(this.menuIndex, false);
+            this.checkpointStage = chosenShrine.stageIndex;
+            this.saveManager.unlockShrine(chosenShrine.stageIndex);
+            this.level.load(chosenShrine.stageIndex, true, true);
             this.state = GAME_STATE.PLAYING;
           } else {
             this.sound.playHurt();
@@ -4795,12 +5919,11 @@
           if (this.menuIndex === 0) {
             this.state = GAME_STATE.PLAYING;
           } else if (this.menuIndex === 1) {
-            const useCheckpoint = this.checkpointStage === this.level.currentIndex;
-            this.level.load(this.level.currentIndex, useCheckpoint);
+            this.respawnAtActiveShrine();
             this.state = GAME_STATE.PLAYING;
           } else if (this.menuIndex === 2) {
             this.state = GAME_STATE.STAGE_SELECT;
-            this.menuIndex = this.level.currentIndex;
+            this.menuIndex = 0;
           } else if (this.menuIndex === 3) {
             this.toggleMute();
           } else if (this.menuIndex === 4) {
@@ -4860,8 +5983,7 @@
       }
   
       if (this.input.actionPressed("retry") && !this.deathSequence.active) {
-        const useCheckpoint = this.checkpointStage === this.level.currentIndex;
-        this.level.load(this.level.currentIndex, useCheckpoint);
+        this.respawnAtActiveShrine();
         this.input.endFrame();
         return;
       }
@@ -4936,7 +6058,7 @@
       }
   
       if (this.state === GAME_STATE.VICTORY) {
-        this.background.drawMotes(this.ctx, 9);
+        this.background.drawMotes(this.ctx, 11);
         this.hud.drawVictoryScreen(this.ctx);
         return;
       }
@@ -4953,6 +6075,7 @@
   
       this.background.drawMotes(this.ctx, this.level.currentIndex);
       this.hud.drawHUD(this.ctx);
+      this.particles.drawScreenSpace(this.ctx);
   
       if (this.deathSequence.fadeAlpha > 0) {
         this.ctx.fillStyle = `rgba(0, 0, 0, ${this.deathSequence.fadeAlpha.toFixed(2)})`;

@@ -1,24 +1,110 @@
 /**
- * Stage definitions for Chapters I through X, including the procedural
- * 120x60 Grand Labyrinth (Stage 9) and the Eclipse Sanctum Boss Arena (Stage 10).
+ * Stage definitions for Chapters I through XII, including:
+ *  - Stage I (Silent Precipice) with Awakening Attunement Shrine
+ *  - Stage V (Crimson Bastion) expanded 80x36 scrolling fortress with Citadel Attunement Shrine
+ *  - Stage VII (Mantis Cloister) featuring Mantis Duelists
+ *  - Stage IX (Astral Observatory) featuring Sanctum Acolytes
+ *  - Stage XI (The Grand Labyrinth) 120x60 non-linear fortress with Sanctum Nexus Shrine
+ *  - Stage XII (Eclipse Sanctum) Final Boss Arena against Seraph Vael
  *
  * Tile Legend:
  *  # = Solid stone / runic architecture
  *  ^ = Lethal crystal spikes (can be pogo-slashed)
  *  P = Player spawn coordinate
  *  S = Celestial Blade Shrine (Stage 2)
- *  K = Attunement Checkpoint Shrine
- *  Q = Sanctum Key (Stage 9)
+ *  K = Attunement Checkpoint Shrine (Stages 1, 5, and 11)
+ *  Q = Sanctum Key (Stage 11)
  *  R = Hidden Starlight Relic (3 Relics upgrades Max Hearts to 4)
  *  G = Destructible Runic Barrier Gate
  *  L = 3-Key Grand Sanctum Gate
- *  E = Void Stalker (Patrol Enemy)
- *  C = Crimson Vanguard (Charger Enemy)
- *  F = Astral Construct (Flying Enemy)
- *  B = Seraph Vael, Warden of the Eclipse (Stage 10 Boss)
+ *  E = Void Stalker (Aggressive Lunge Patrol Enemy)
+ *  C = Crimson Vanguard (Shield-Counter Charger Enemy)
+ *  F = Astral Construct (Aimed Bolt Flying Enemy)
+ *  D = Mantis Duelist (Fast Scythe Lunge & Counter Duelist)
+ *  M = Sanctum Acolyte (Teleporting Void-Orb Mage)
+ *  B = Seraph Vael, Warden of the Eclipse (Stage 12 Boss)
  */
 
-function buildStage9Labyrinth() {
+function buildStage5CrimsonBastion() {
+  const cols = 80;
+  const rows = 36;
+  const g = Array.from({ length: rows }, () => Array(cols).fill("."));
+
+  const fillRect = (r1, c1, r2, c2, ch = "#") => {
+    for (let r = Math.max(0, r1); r <= Math.min(rows - 1, r2); r++) {
+      for (let c = Math.max(0, c1); c <= Math.min(cols - 1, c2); c++) {
+        g[r][c] = ch;
+      }
+    }
+  };
+
+  // Outer bastion walls & floor
+  fillRect(0, 0, rows - 1, cols - 1, "#");
+  fillRect(2, 2, rows - 5, cols - 3, ".");
+
+  // Right exit corridor (rows 22..25 on right border)
+  fillRect(22, cols - 3, 25, cols - 1, ".");
+  fillRect(26, 66, 31, cols - 1, "#");
+
+  // Entry Courtyard (Left Wing, cols 2..24)
+  fillRect(28, 2, 31, 14, "#");
+  g[27][5] = "P";
+  g[27][11] = "E";
+
+  // Spike moat & stepping battlements
+  fillRect(31, 15, 31, 25, "^");
+  fillRect(26, 17, 27, 22, "#");
+  g[25][19] = "C";
+
+  // Lower Dungeon & Central Ascent (cols 26..44)
+  fillRect(28, 26, 31, 38, "#");
+  g[27][31] = "D";
+  fillRect(22, 28, 23, 35, "#");
+  fillRect(17, 22, 18, 27, "#");
+  g[16][24] = "F";
+
+  // Upper West Alcove -> Hidden Starlight Relic #2
+  fillRect(12, 6, 13, 18, "#");
+  fillRect(13, 19, 13, 22, "^");
+  g[11][14] = "C";
+  g[11][8] = "R";
+
+  // Central Citadel Keep & Attunement Shrine (cols 36..52, rows 15..20)
+  fillRect(18, 36, 20, 52, "#");
+  g[17][43] = "K"; // Mid-fortress Attunement Shrine!
+
+  // High Battlements & Guard Tower (cols 48..76)
+  fillRect(12, 48, 13, 60, "#");
+  g[11][54] = "D";
+  g[10][63] = "F";
+
+  // Lower East Gauntlet leading to the Sealed Bastion Gate
+  fillRect(31, 39, 31, 65, "^");
+  fillRect(26, 44, 27, 51, "#");
+  g[25][48] = "C";
+
+  fillRect(26, 56, 27, 63, "#");
+  g[25][60] = "D";
+  g[20][59] = "F";
+
+  // Sealed Runic Gate guarding the Bastion Exit
+  fillRect(18, 66, 21, 79, "#");
+  for (let r = 22; r <= 25; r++) {
+    g[r][72] = "G";
+  }
+  g[25][68] = "C";
+
+  return {
+    exitY: 184,
+    prompts: [
+      { x: 32, y: 196, text: "CRIMSON CITADEL - FIND THE KEEP SHRINE" },
+      { x: 310, y: 120, text: "SHRINE RESTORES HP & BINDS RESPAWN" }
+    ],
+    grid: g.map((row) => row.join(""))
+  };
+}
+
+function buildStage11Labyrinth() {
   const cols = 120;
   const rows = 60;
   const g = Array.from({ length: rows }, () => Array(cols).fill("."));
@@ -46,7 +132,7 @@ function buildStage9Labyrinth() {
   // Central Hub (Rows 21..38)
   fillRect(35, 2, 38, 27, "#");
   g[34][6] = "P";
-  g[34][15] = "K";
+  g[34][15] = "K"; // Grand Labyrinth Attunement Shrine
 
   // Left Shaft stepping ledges
   fillRect(35, 30, 35, 33, "#");
@@ -64,7 +150,7 @@ function buildStage9Labyrinth() {
   fillRect(38, 58, 38, 65, "^");
   g[31][61] = "F";
 
-  g[34][53] = "E";
+  g[34][53] = "D";
   g[34][71] = "C";
 
   // Right-Center Shaft stepping ledges
@@ -73,7 +159,7 @@ function buildStage9Labyrinth() {
   fillRect(25, 80, 25, 83, "#");
   fillRect(20, 77, 20, 80, "#");
 
-  // Grand Sanctum Corridor leading to Stage 10 Boss Arena
+  // Grand Sanctum Corridor leading to Stage 12 Boss Arena
   fillRect(21, 84, 30, 119, "#");
   fillRect(35, 84, 38, 119, "#");
   fillRect(31, 84, 34, 119, ".");
@@ -87,7 +173,7 @@ function buildStage9Labyrinth() {
   fillRect(9, 3, 9, 8, "#");
   fillRect(18, 3, 18, 26, "^");
   g[8][5] = "Q";
-  g[11][12] = "E";
+  g[11][12] = "M";
   g[10][21] = "F";
 
   // Top-Right Wing -> Key #2
@@ -99,6 +185,7 @@ function buildStage9Labyrinth() {
   fillRect(15, 64, 18, 74, "#");
   fillRect(18, 59, 18, 63, "^");
   g[11][61] = "F";
+  g[14][69] = "M";
 
   fillRect(15, 85, 18, 92, "#");
   fillRect(18, 93, 18, 106, "^");
@@ -114,7 +201,7 @@ function buildStage9Labyrinth() {
 
   fillRect(55, 4, 58, 15, "#");
   fillRect(56, 16, 56, 19, "^");
-  g[54][9] = "E";
+  g[54][9] = "D";
   g[54][5] = "R";
 
   fillRect(55, 44, 58, 54, "#");
@@ -124,7 +211,7 @@ function buildStage9Labyrinth() {
   fillRect(55, 62, 58, 74, "#");
   fillRect(56, 55, 56, 61, "^");
   g[51][58] = "F";
-  g[54][68] = "E";
+  g[54][68] = "M";
 
   fillRect(45, 78, 45, 82, "#");
   fillRect(50, 77, 50, 81, "#");
@@ -134,7 +221,7 @@ function buildStage9Labyrinth() {
   fillRect(52, 91, 52, 95, "#");
   g[49][99] = "F";
   fillRect(52, 106, 58, 116, "#");
-  g[51][109] = "C";
+  g[51][109] = "D";
   g[51][114] = "Q";
 
   return {
@@ -145,13 +232,13 @@ function buildStage9Labyrinth() {
 }
 
 export const STAGES = [
-  // STAGE 1: SILENT PRECIPICE (Movement, Jump & Dash Tutorial)
+  // STAGE 1 (CH. I): SILENT PRECIPICE (Movement, Jump, Dash & First Attunement Shrine)
   {
     exitY: 124,
     prompts: [
-      { x: 14, y: 112, text: "[ARROWS/WASD] MOVE" },
-      { x: 98, y: 92, text: "[Z/SPACE] JUMP" },
-      { x: 198, y: 102, text: "[C/SHIFT] DASH" }
+      { x: 14, y: 112, text: "[ARROWS/WASD] MOVE   SHRINE ATTUNES RESPAWN" },
+      { x: 108, y: 92, text: "[Z/SPACE] JUMP" },
+      { x: 204, y: 102, text: "[C/SHIFT] DASH" }
     ],
     grid: [
       "########################################",
@@ -171,7 +258,7 @@ export const STAGES = [
       "#.......................................",
       "#.........######..#####.................",
       "#.........######..#####.................",
-      "#..P......######..#####.................",
+      "#..P...K..######..#####.................",
       "############################^^^^########",
       "########################################",
       "########################################",
@@ -180,11 +267,11 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 2: CELESTIAL SHRINE (Unlock Astral Blade & Unseal Barrier)
+  // STAGE 2 (CH. II): CELESTIAL SHRINE (Unlock Astral Blade & 3-Hit Combo)
   {
     exitY: 108,
     prompts: [
-      { x: 82, y: 58, text: "[X/J] SLASH COMBO", reqSword: true },
+      { x: 74, y: 58, text: "[X/J] 3-HIT SOLAR COMBO!", reqSword: true },
       { x: 182, y: 82, text: "[DOWN+X] POGO BOUNCE", reqSword: true }
     ],
     grid: [
@@ -214,10 +301,12 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 3: FIRST BLOOD (Patrol Stalkers & Relic #1 Alcove)
+  // STAGE 3 (CH. III): FIRST BLOOD (Patrol Stalkers, Hold-to-Focus Heal & Relic #1)
   {
     exitY: 108,
-    prompts: [{ x: 24, y: 98, text: "[V/F] SOUL WAVE OR HEAL" }],
+    prompts: [
+      { x: 16, y: 98, text: "TAP [V/F] SOUL WAVE   HOLD [V/F] FOCUS HEAL" }
+    ],
     grid: [
       "########################################",
       "#......................................#",
@@ -245,7 +334,7 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 4: WINDWARD CHASM (Down-Slash Pogo Across Chasms & Flyers)
+  // STAGE 4 (CH. IV): WINDWARD CHASM (Down-Slash Pogo Across Chasms & Flyers)
   {
     exitY: 100,
     prompts: [{ x: 64, y: 54, text: "[DOWN+X] POGO REFRESHES DASH" }],
@@ -276,38 +365,10 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 5: CRIMSON BASTION (Charger Arena & Relic #2)
-  {
-    exitY: 108,
-    prompts: [],
-    grid: [
-      "########################################",
-      "#......................................#",
-      "#......................................#",
-      "#......................................#",
-      "#......................................#",
-      "#..................R...................#",
-      "#................#####.................#",
-      "#......................................#",
-      "#......................................#",
-      "#..............E.......................#",
-      "#...........#######....................#",
-      "#.............................##########",
-      "#..................................G....",
-      "#..................................G....",
-      "#..P...................C...........G....",
-      "########...#################...#########",
-      "########^^^#################^^^#########",
-      "########################################",
-      "########################################",
-      "########################################",
-      "########################################",
-      "########################################",
-      "########################################"
-    ]
-  },
+  // STAGE 5 (CH. V): CRIMSON BASTION (Expanded 80x36 Citadel + Keep Attunement Shrine + Relic #2)
+  buildStage5CrimsonBastion(),
 
-  // STAGE 6: SHATTERED ARCHES (Aerial Flyers, Pogo Chains & Relic #3)
+  // STAGE 6 (CH. VI): SHATTERED ARCHES (Aerial Flyers, Pogo Chains & Relic #3)
   {
     exitY: 84,
     prompts: [],
@@ -338,7 +399,38 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 7: TWIN CONDUITS (Dual Crimson Chargers & Sealed Gate)
+  // STAGE 7 (CH. VII): MANTIS CLOISTER (New Stage - Agile Mantis Duelists!)
+  {
+    exitY: 100,
+    prompts: [{ x: 36, y: 56, text: "BEWARE THE MANTIS DUELISTS" }],
+    grid: [
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#................D.....................#",
+      "#.............#######..................#",
+      "#......................................#",
+      "#.............................##########",
+      "#..................................G....",
+      "#..................................G....",
+      "#..P..........D.............D......G....",
+      "#######....#######.......#######.#######",
+      "#######....#######.......#######.#######",
+      "#######^^^^#######^^^^^^^#######^#######",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################"
+    ]
+  },
+
+  // STAGE 8 (CH. VIII): TWIN CONDUITS (Dual Crimson Chargers & Sealed Gate)
   {
     exitY: 100,
     prompts: [],
@@ -369,7 +461,38 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 8: SANCTUM THRESHOLD (Gauntlet & Relic #4)
+  // STAGE 9 (CH. IX): ASTRAL OBSERVATORY (New Stage - Teleporting Sanctum Acolytes!)
+  {
+    exitY: 92,
+    prompts: [{ x: 40, y: 44, text: "SLASH ENEMY ORBS TO PARRY & GAIN SOUL" }],
+    grid: [
+      "########################################",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#......................................#",
+      "#............M............M............#",
+      "#.........######.......######..........#",
+      "#......................................#",
+      "#.............................##########",
+      "#..................................G....",
+      "#..................................G....",
+      "#..P..........D............M.......#####",
+      "#######....#######.....#######.#########",
+      "#######....#######.....#######.#########",
+      "#######^^^^#######^^^^^#######^#########",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################",
+      "########################################"
+    ]
+  },
+
+  // STAGE 10 (CH. X): SANCTUM THRESHOLD (Gauntlet & Relic #4)
   {
     exitY: 92,
     prompts: [],
@@ -387,7 +510,7 @@ export const STAGES = [
       "#..............F...................G....",
       "#..................................G....",
       "#..................................G....",
-      "#..P..........C........C...........#####",
+      "#..P..........C........D...........#####",
       "########..#######....#######..##########",
       "########..#######....#######..##########",
       "########^^#######^^^^#######^^##########",
@@ -400,10 +523,10 @@ export const STAGES = [
     ]
   },
 
-  // STAGE 9: THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania)
-  buildStage9Labyrinth(),
+  // STAGE 11 (CH. XI): THE GRAND LABYRINTH (120x60 Seamless Scrolling Metroidvania + Shrine)
+  buildStage11Labyrinth(),
 
-  // STAGE 10: ECLIPSE SANCTUM (Final Boss Arena - Seraph Vael)
+  // STAGE 12 (CH. XII): ECLIPSE SANCTUM (Final Boss Arena - Seraph Vael)
   {
     exitY: 108,
     prompts: [{ x: 96, y: 38, text: "VANQUISH SERAPH VAEL" }],

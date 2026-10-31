@@ -1,8 +1,9 @@
+import { PLAYER_CONFIG } from "../config/constants.js";
 import { PALETTE } from "../config/palette.js";
 
 /**
  * Procedural pixel-art sprite and animation renderer for the player,
- * flowing scarf trail, slash arcs, astral projectiles, and enemies.
+ * flowing scarf trail, 3-hit combo slash arcs, Soul Focus silhouette, and astral projectiles.
  */
 export class SpriteRenderer {
   static drawPlayer(ctx, player) {
@@ -20,8 +21,17 @@ export class SpriteRenderer {
       return;
     }
 
+    const isFocusing = player.focusTimer > 0;
+    const isWhiteSilhouette =
+      player.focusFlashTimer > 0 ||
+      (isFocusing && (player.focusTimer > 12 || player.focusTimer % 4 < 3));
+
     // Draw simulated flowing scarf trail behind player
-    const scarfColor = player.canDash ? PALETTE.playerHair : PALETTE.playerNoDash;
+    const scarfColor = isWhiteSilhouette
+      ? PALETTE.white
+      : player.canDash
+        ? PALETTE.playerHair
+        : PALETTE.playerNoDash;
     if (player.scarfNodes && player.scarfNodes.length > 0) {
       ctx.fillStyle = scarfColor;
       for (let i = 0; i < player.scarfNodes.length; i++) {
@@ -38,15 +48,46 @@ export class SpriteRenderer {
     const dx = Math.round(cx - dw / 2);
     const dy = Math.round(by - dh);
 
+    // Soul Focus glowing aura & levitation ring (Hollow Knight style!)
+    if (isFocusing) {
+      const ratio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
+      const ringRadius = Math.max(3, Math.round((1 - ratio) * 14));
+      ctx.fillStyle = "rgba(72, 219, 251, 0.28)";
+      ctx.fillRect(dx - 3, dy - 3, dw + 6, dh + 5);
+      ctx.fillStyle = PALETTE.white;
+      ctx.fillRect(cx - ringRadius, dy + 4, 2, 2);
+      ctx.fillRect(cx + ringRadius - 1, dy + 4, 2, 2);
+      ctx.fillRect(cx - 1, dy + 4 - ringRadius, 2, 2);
+      ctx.fillRect(cx - 1, Math.min(by, dy + 4 + ringRadius), 2, 2);
+
+      // Rising vertical soul beam pillars
+      const pillarH = Math.round(ratio * (dh + 6));
+      ctx.fillStyle = player.focusTimer % 4 < 2 ? PALETTE.white : PALETTE.soulCyan;
+      ctx.fillRect(dx - 2, by - pillarH, 1, pillarH);
+      ctx.fillRect(dx + dw + 1, by - pillarH, 1, pillarH);
+    }
+
     // Subtle idle breathing offset
     const isMoving = Math.abs(player.vx) > 0.2;
     const breathOffset =
       player.onGround && !isMoving && Math.sin(player.animTick * 0.12) > 0.5 ? 1 : 0;
 
+    if (isWhiteSilhouette) {
+      // Pure luminous white Soul Focus vessel silhouette
+      ctx.fillStyle = PALETTE.soulCyan;
+      ctx.fillRect(dx - 1, dy - 1 + breathOffset, dw + 2, dh + 1 - breathOffset);
+      ctx.fillStyle = PALETTE.white;
+      ctx.fillRect(dx, dy + breathOffset, dw, dh - breathOffset);
+      // Glowing cyan focus eyes
+      ctx.fillStyle = PALETTE.soulCyan;
+      const eyeX = player.facing === 1 ? dx + dw - 2 : dx;
+      ctx.fillRect(eyeX, dy + 2 + breathOffset, 2, 2);
+      return;
+    }
+
     // Legs / Animated Run Cycle
     ctx.fillStyle = PALETTE.playerCloakDark;
     if (!player.onGround) {
-      // Airborne tuck pose
       ctx.fillRect(dx + 1, by - 2, dw - 2, 2);
     } else if (isMoving) {
       const stride = Math.floor(player.animTick / 4) % 2;
@@ -82,18 +123,26 @@ export class SpriteRenderer {
 
     // Sheathed Celestial Blade on back when unlocked and not swinging
     if (player.hasSword && player.attackTimer <= 0) {
-      ctx.fillStyle = PALETTE.swordGlow;
+      ctx.fillStyle = player.comboResetTimer > 0 && player.comboStep === 1 ? PALETTE.swordCombo : PALETTE.swordGlow;
       const sx = player.facing === 1 ? dx - 2 : dx + dw;
       ctx.fillRect(sx, dy + 1 + breathOffset, 2, 5);
       ctx.fillStyle = PALETTE.white;
       ctx.fillRect(sx, dy + 1 + breathOffset, 1, 2);
     }
 
-    // Focus Heal charging aura
-    if (player.focusTimer > 0) {
-      ctx.fillStyle = player.focusTimer % 4 < 2 ? PALETTE.soulCyan : PALETTE.white;
-      ctx.fillRect(dx - 2, dy - 2, 1, dh + 2);
-      ctx.fillRect(dx + dw + 1, dy - 2, 1, dh + 2);
+    // 3-Hit Combo Step Pips above player when chaining strikes
+    if (player.comboResetTimer > 0 && player.hasSword) {
+      for (let i = 0; i < 3; i++) {
+        const pipX = cx - 5 + i * 4;
+        const pipY = dy - 5;
+        const active = i <= player.comboStep;
+        ctx.fillStyle = !active
+          ? PALETTE.heartEmpty
+          : i === 2
+            ? PALETTE.swordCombo
+            : PALETTE.swordGlow;
+        ctx.fillRect(pipX, pipY, 2, 2);
+      }
     }
   }
 
@@ -101,14 +150,17 @@ export class SpriteRenderer {
     const hb = player.getSlashBounds();
     const progress = 1 - player.attackTimer / player.attackMaxTimer;
     const isFlashFrame = player.attackTimer >= player.attackMaxTimer - 2;
+    const isSecondHit = player.comboStep === 1;
     const isFinisher = player.comboStep === 2;
     const mainColor = isFlashFrame
       ? PALETTE.white
       : isFinisher
         ? PALETTE.swordCombo
-        : PALETTE.swordGlow;
-    const innerColor = PALETTE.white;
-    const thick = Math.max(2, Math.round((1 - progress * 0.65) * (isFinisher ? 6 : 5)));
+        : isSecondHit
+          ? PALETTE.soulCyan
+          : PALETTE.swordGlow;
+    const innerColor = isFinisher ? PALETTE.swordGlow : PALETTE.white;
+    const thick = Math.max(2, Math.round((1 - progress * 0.65) * (isFinisher ? 7 : 5)));
 
     ctx.fillStyle = mainColor;
 
@@ -138,6 +190,10 @@ export class SpriteRenderer {
 
       ctx.fillStyle = innerColor;
       ctx.fillRect(rightX - 3, hb.y + 4, 2, hb.h - 8);
+      if (isFinisher) {
+        ctx.fillStyle = PALETTE.bossCrimson;
+        ctx.fillRect(rightX - 1, hb.y + 2, 2, hb.h - 4);
+      }
     } else {
       ctx.fillRect(hb.x, hb.y + 3, thick + 3, hb.h - 6);
       ctx.fillRect(hb.x + 2, hb.y + 1, thick, hb.h - 2);
@@ -146,6 +202,10 @@ export class SpriteRenderer {
 
       ctx.fillStyle = innerColor;
       ctx.fillRect(hb.x + 1, hb.y + 4, 2, hb.h - 8);
+      if (isFinisher) {
+        ctx.fillStyle = PALETTE.bossCrimson;
+        ctx.fillRect(hb.x - 1, hb.y + 2, 2, hb.h - 4);
+      }
     }
   }
 

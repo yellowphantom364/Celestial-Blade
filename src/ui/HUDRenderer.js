@@ -1,4 +1,9 @@
-import { PLAYER_CONFIG, STAGE_METADATA, VIEWPORT } from "../config/constants.js";
+import {
+  PLAYER_CONFIG,
+  SHRINE_CHAPTERS,
+  STAGE_METADATA,
+  VIEWPORT
+} from "../config/constants.js";
 import { PALETTE } from "../config/palette.js";
 import { drawPixelText, drawPixelTextCentered } from "../graphics/PixelFont.js";
 
@@ -23,8 +28,8 @@ export function formatFramesToTime(frames) {
 }
 
 /**
- * Renders the in-game HUD, Boss health bar, Stage banners,
- * Title screen, Pause overlay, Stage Select, Controls guide, and Victory screen.
+ * Renders the in-game HUD, Soul Focus progress bar, Boss health bar, Stage banners,
+ * Title screen, Pause overlay, Shrine Warp menu, Controls guide, and Victory screen.
  */
 export class HUDRenderer {
   constructor(game) {
@@ -54,7 +59,7 @@ export class HUDRenderer {
     drawPixelText(
       ctx,
       formatFramesToTime(this.game.runFrames),
-      38,
+      42,
       7,
       PALETTE.textBright,
       PALETTE.textShadow
@@ -63,8 +68,18 @@ export class HUDRenderer {
     const relicsCount = saveManager.data.relicsFound.length;
     drawPixelText(ctx, `*${relicsCount}/5`, 8, 15, PALETTE.relicCyan, PALETTE.textShadow);
 
+    const boundMeta = STAGE_METADATA[this.game.checkpointStage || 0] || STAGE_METADATA[0];
+    drawPixelText(
+      ctx,
+      `SHRINE:${boundMeta.numeral}`,
+      42,
+      15,
+      PALETTE.playerNoDash,
+      PALETTE.textShadow
+    );
+
     if (this.game.sound.muted) {
-      drawPixelText(ctx, "MUTE", 38, 15, PALETTE.playerHair, PALETTE.textShadow);
+      drawPixelText(ctx, "MUTE", 98, 15, PALETTE.playerHair, PALETTE.textShadow);
     }
 
     // Top-Right: Hearts
@@ -88,18 +103,44 @@ export class HUDRenderer {
     if (fillW > 0) {
       const canHeal = player.soul >= PLAYER_CONFIG.SOUL_HEAL_COST;
       const canWave = player.soul >= PLAYER_CONFIG.SOUL_WAVE_COST;
-      ctx.fillStyle = canHeal
-        ? PALETTE.white
-        : canWave
-          ? PALETTE.soulCyan
-          : PALETTE.playerCloak;
+      ctx.fillStyle =
+        player.focusTimer > 0 && player.focusTimer % 4 < 2
+          ? PALETTE.white
+          : canHeal
+            ? PALETTE.white
+            : canWave
+              ? PALETTE.soulCyan
+              : PALETTE.playerCloak;
       ctx.fillRect(barX + 1, barY + 1, fillW, 2);
+    }
+
+    // Soul Focus Channeling Progress Bar under Soul Gauge when holding to heal!
+    if (player.focusTimer > 0) {
+      const focusRatio = Math.min(1, player.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES);
+      const focusW = Math.round(focusRatio * (barW - 2));
+      ctx.fillStyle = PALETTE.textShadow;
+      ctx.fillRect(barX, barY + 5, barW, 3);
+      ctx.fillStyle = PALETTE.white;
+      ctx.fillRect(barX + 1, barY + 6, focusW, 1);
+    } else if (
+      player.hp < player.maxHp &&
+      player.soul >= PLAYER_CONFIG.SOUL_HEAL_COST &&
+      this.game.uiTick % 40 < 26
+    ) {
+      drawPixelText(
+        ctx,
+        "HOLD [V/F] HEAL",
+        startX - 48,
+        barY + 5,
+        PALETTE.soulCyan,
+        PALETTE.textShadow
+      );
     }
 
     // Sanctum Keys beneath Soul Bar
     for (let i = 0; i < player.keysCollected; i++) {
       const kx = startX + i * 10 + 1;
-      const ky = startY + 15;
+      const ky = startY + 16;
       ctx.fillStyle = PALETTE.textShadow;
       ctx.fillRect(kx + 1, ky + 1, 5, 5);
       ctx.fillStyle = PALETTE.swordGlow;
@@ -114,7 +155,7 @@ export class HUDRenderer {
       this.drawStageBanner(ctx, meta, level.bannerTimer);
     }
 
-    // Stage 10 Boss Health Bar
+    // Stage 12 Boss Health Bar
     if (level.boss && !level.boss.dead) {
       this.drawBossBar(ctx, level.boss);
     }
@@ -128,10 +169,10 @@ export class HUDRenderer {
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
     ctx.fillStyle = "rgba(9, 10, 20, 0.72)";
-    ctx.fillRect(50, 26, VIEWPORT.WIDTH - 100, 25);
+    ctx.fillRect(46, 26, VIEWPORT.WIDTH - 92, 25);
     ctx.fillStyle = PALETTE.swordGlow;
-    ctx.fillRect(50, 26, VIEWPORT.WIDTH - 100, 1);
-    ctx.fillRect(50, 50, VIEWPORT.WIDTH - 100, 1);
+    ctx.fillRect(46, 26, VIEWPORT.WIDTH - 92, 1);
+    ctx.fillRect(46, 50, VIEWPORT.WIDTH - 92, 1);
 
     drawPixelTextCentered(
       ctx,
@@ -228,7 +269,7 @@ export class HUDRenderer {
     );
 
     // Menu Box
-    const boxW = 156;
+    const boxW = 166;
     const boxH = 74;
     const boxX = Math.floor((VIEWPORT.WIDTH - boxW) / 2);
     const boxY = 56;
@@ -281,45 +322,75 @@ export class HUDRenderer {
 
   drawStageSelect(ctx) {
     const { menuIndex, saveManager } = this.game;
-    ctx.fillStyle = "rgba(9, 10, 20, 0.88)";
+    ctx.fillStyle = "rgba(9, 10, 20, 0.90)";
     ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
 
     drawPixelTextCentered(
       ctx,
-      "SELECT CHAPTER",
+      "ATTUNEMENT SHRINE WARP",
       VIEWPORT.WIDTH / 2,
-      12,
+      14,
       PALETTE.swordGlow,
       PALETTE.textShadow
     );
+    drawPixelTextCentered(
+      ctx,
+      "ONLY ATTUNED SHRINES CAN BE WARPED TO OR RESPAWNED AT",
+      VIEWPORT.WIDTH / 2,
+      26,
+      PALETTE.playerNoDash,
+      PALETTE.textShadow
+    );
 
-    const unlocked = saveManager.data.highestStageUnlocked;
-    for (let i = 0; i < STAGE_METADATA.length; i++) {
-      const meta = STAGE_METADATA[i];
-      const isUnlocked = i <= unlocked;
+    for (let i = 0; i < SHRINE_CHAPTERS.length; i++) {
+      const shrine = SHRINE_CHAPTERS[i];
+      const isUnlocked = saveManager.hasShrine(shrine.stageIndex);
       const selected = i === menuIndex;
-      const col = i < 5 ? 0 : 1;
-      const row = i % 5;
-      const x = col === 0 ? 22 : 168;
-      const y = 34 + row * 22;
+      const x = 40;
+      const y = 44 + i * 34;
+      const w = 240;
+      const h = 26;
 
-      ctx.fillStyle = selected ? "rgba(56, 103, 214, 0.35)" : "rgba(26, 32, 56, 0.65)";
-      ctx.fillRect(x, y, 130, 17);
+      ctx.fillStyle = selected ? "rgba(56, 103, 214, 0.38)" : "rgba(26, 32, 56, 0.72)";
+      ctx.fillRect(x, y, w, h);
       ctx.fillStyle = selected ? PALETTE.swordGlow : PALETTE.tileEdge;
-      ctx.fillRect(x, y, 130, 1);
+      ctx.fillRect(x, y, w, 1);
+      ctx.fillRect(x, y + h - 1, w, 1);
 
-      const label = isUnlocked ? `${meta.numeral}. ${meta.title}` : `${meta.numeral}. LOCKED`;
-      const color = !isUnlocked
-        ? PALETTE.textSubtle
-        : selected
-          ? PALETTE.swordGlow
-          : PALETTE.textBright;
-      drawPixelText(ctx, label, x + 6, y + 6, color, PALETTE.textShadow);
+      // Shrine Beacon Icon on Left
+      ctx.fillStyle = isUnlocked ? PALETTE.playerNoDash : PALETTE.heartEmpty;
+      ctx.fillRect(x + 10, y + 7, 4, 12);
+      ctx.fillStyle = isUnlocked ? PALETTE.white : PALETTE.textSubtle;
+      ctx.fillRect(x + 11, y + 4, 2, 3);
+
+      const title = isUnlocked
+        ? `CH.${shrine.numeral} - ${shrine.name}`
+        : `CH.${shrine.numeral} - UNATTUNED SHRINE (LOCKED)`;
+      const subtitle = isUnlocked
+        ? `${shrine.subtitle} - FULL HP RESTORE`
+        : "DISCOVER & ATTUNE THIS SHRINE IN THE REALM FIRST";
+
+      drawPixelText(
+        ctx,
+        title,
+        x + 22,
+        y + 6,
+        !isUnlocked ? PALETTE.textSubtle : selected ? PALETTE.swordGlow : PALETTE.textBright,
+        PALETTE.textShadow
+      );
+      drawPixelText(
+        ctx,
+        subtitle,
+        x + 22,
+        y + 15,
+        isUnlocked ? PALETTE.playerNoDash : PALETTE.heartEmpty,
+        PALETTE.textShadow
+      );
     }
 
     drawPixelTextCentered(
       ctx,
-      "[Z/ENTER] LAUNCH STAGE   [ESC/X] BACK TO TITLE",
+      "[Z/ENTER] WARP TO SHRINE   [ESC/X] BACK TO TITLE",
       VIEWPORT.WIDTH / 2,
       158,
       PALETTE.textSubtle,
@@ -335,7 +406,7 @@ export class HUDRenderer {
       ctx,
       "CONTROLS & COMBAT GUIDE",
       VIEWPORT.WIDTH / 2,
-      14,
+      12,
       PALETTE.swordGlow,
       PALETTE.textShadow
     );
@@ -343,25 +414,25 @@ export class HUDRenderer {
     const lines = [
       ["MOVE / AIM:", "ARROW KEYS OR WASD"],
       ["JUMP / WALL-JUMP:", "Z, SPACE, OR K"],
-      ["BLADE SLASH (3-COMBO):", "X OR J (4 DIRECTIONS)"],
+      ["3-HIT SOLAR COMBO:", "X OR J (3RD HIT = 2X DMG)"],
       ["AERIAL POGO BOUNCE:", "HOLD DOWN + SLASH IN AIR"],
-      ["ASTRAL DASH (I-FRAMES):", "C, SHIFT, OR L"],
-      ["SOUL WAVE PROJECTILE:", "V, F, OR I (45% SOUL)"],
-      ["SOUL FOCUS HEAL (+1 HP):", "UP/DOWN + V/F (60% SOUL)"],
-      ["PAUSE / QUICK RETRY:", "ESC/P TO PAUSE, R TO RETRY"]
+      ["ASTRAL DASH (I-FRAMES):", "C, SHIFT, OR L (HORIZONTAL)"],
+      ["ASTRAL WAVE (TAP):", "TAP V, F, OR I (45% SOUL)"],
+      ["SOUL FOCUS HEAL (HOLD):", "HOLD V/F ON GROUND (60% SOUL)"],
+      ["SHRINES & DEATH:", "SHRINES HEAL & BIND RESPAWN"]
     ];
 
     for (let i = 0; i < lines.length; i++) {
-      const y = 34 + i * 14;
-      drawPixelText(ctx, lines[i][0], 24, y, PALETTE.playerNoDash, PALETTE.textShadow);
-      drawPixelText(ctx, lines[i][1], 158, y, PALETTE.textBright, PALETTE.textShadow);
+      const y = 30 + i * 14;
+      drawPixelText(ctx, lines[i][0], 18, y, PALETTE.playerNoDash, PALETTE.textShadow);
+      drawPixelText(ctx, lines[i][1], 152, y, PALETTE.textBright, PALETTE.textShadow);
     }
 
     drawPixelTextCentered(
       ctx,
-      "COLLECT 3 STARLIGHT RELICS (*) TO UPGRADE MAX HEARTS TO 4!",
+      "HP PERSISTS ACROSS STAGES! HOLD [V/F] STILL TO FOCUS HEAL!",
       VIEWPORT.WIDTH / 2,
-      150,
+      148,
       PALETTE.relicCyan,
       PALETTE.textShadow
     );
@@ -369,7 +440,7 @@ export class HUDRenderer {
       ctx,
       "[ESC / ENTER / Z] RETURN TO TITLE",
       VIEWPORT.WIDTH / 2,
-      164,
+      162,
       PALETTE.swordGlow,
       PALETTE.textShadow
     );
@@ -380,7 +451,7 @@ export class HUDRenderer {
     ctx.fillStyle = "rgba(9, 10, 20, 0.78)";
     ctx.fillRect(0, 0, VIEWPORT.WIDTH, VIEWPORT.HEIGHT);
 
-    const boxW = 152;
+    const boxW = 168;
     const boxH = 98;
     const boxX = Math.floor((VIEWPORT.WIDTH - boxW) / 2);
     const boxY = Math.floor((VIEWPORT.HEIGHT - boxH) / 2);
@@ -441,7 +512,7 @@ export class HUDRenderer {
 
     const relics = saveManager.data.relicsFound.length;
     let rank = "B";
-    if (runDeaths <= 2 && runFrames < 60 * 300) rank = "S";
+    if (runDeaths <= 2 && runFrames < 60 * 360) rank = "S";
     else if (runDeaths <= 6) rank = "A";
 
     const stats = [
@@ -462,7 +533,7 @@ export class HUDRenderer {
       );
     }
 
-    const options = ["PLAY AGAIN (NEW RUN)", "STAGE SELECT", "RETURN TO TITLE"];
+    const options = ["PLAY AGAIN (NEW RUN)", "WARP TO SHRINE", "RETURN TO TITLE"];
     for (let i = 0; i < options.length; i++) {
       const selected = i === menuIndex;
       const label = selected ? `> ${options[i]} <` : options[i];
@@ -508,6 +579,15 @@ export class HUDRenderer {
         ctx.fillStyle = PALETTE.playerHair;
         ctx.fillRect(Math.round(s.x), Math.round(s.y), s.size, s.size);
       }
+      const boundMeta = STAGE_METADATA[this.game.checkpointStage || 0] || STAGE_METADATA[0];
+      drawPixelTextCentered(
+        ctx,
+        `RETURNING TO SHRINE ${boundMeta.numeral} (${boundMeta.title})...`,
+        VIEWPORT.WIDTH / 2,
+        VIEWPORT.HEIGHT - 28,
+        PALETTE.playerNoDash,
+        PALETTE.textShadow
+      );
     }
   }
 }

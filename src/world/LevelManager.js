@@ -7,7 +7,7 @@ import { STAGES } from "./stages.js";
 
 /**
  * Tilemap loader, neighbor-aware autotiler, collision detector,
- * and stage lifecycle manager.
+ * and stage lifecycle manager with persistent HP across stage transitions.
  */
 export class LevelManager {
   constructor(game) {
@@ -34,15 +34,18 @@ export class LevelManager {
     return BIOME_THEMES[meta.biome] || BIOME_THEMES.precipice;
   }
 
-  load(index, useCheckpointPos = false) {
+  load(index, useCheckpointPos = false, restoreFullHp = false) {
     this.currentIndex = Math.max(0, Math.min(STAGES.length - 1, index));
     this.game.saveManager.unlockStage(this.currentIndex);
 
     // Select biome soundtrack
-    if (this.currentIndex === 9) {
+    const meta = STAGE_METADATA[this.currentIndex] || STAGE_METADATA[0];
+    if (meta.biome === "eclipse") {
       this.game.sound.setTrack("boss");
-    } else if (this.currentIndex === 8) {
+    } else if (meta.biome === "labyrinth") {
       this.game.sound.setTrack("labyrinth");
+    } else if (meta.biome === "spire") {
+      this.game.sound.setTrack("bastion");
     } else {
       this.game.sound.setTrack("exploration");
     }
@@ -55,7 +58,11 @@ export class LevelManager {
       this.game.player.swordShrineClaimed = true;
     }
 
-    this.game.player.hp = this.game.player.maxHp;
+    // Only restore full HP on new run, shrine respawn, or shrine warp — NOT when walking between stages!
+    if (restoreFullHp || this.game.player.hp <= 0) {
+      this.game.player.hp = this.game.player.maxHp;
+    }
+
     if (!useCheckpointPos) {
       this.game.player.keysCollected = 0;
     }
@@ -95,12 +102,15 @@ export class LevelManager {
         } else if (ch === "S") {
           this.pedestal = { x: wx, y: wy };
         } else if (ch === "K") {
+          const isShrineActive =
+            (useCheckpointPos && this.game.checkpointStage === this.currentIndex) ||
+            this.game.saveManager.hasShrine(this.currentIndex);
           this.checkpoint = {
             x: wx,
             y: wy,
-            activated: useCheckpointPos && this.game.checkpointStage === this.currentIndex
+            activated: isShrineActive
           };
-          if (this.checkpoint.activated) {
+          if (useCheckpointPos) {
             this.game.player.spawnX = wx;
             this.game.player.spawnY = wy - 1;
             this.game.player.resetToSpawn();
@@ -134,6 +144,10 @@ export class LevelManager {
           this.enemies.push(new Enemy(wx, wy - 2, "charger"));
         } else if (ch === "F") {
           this.enemies.push(new Enemy(wx, wy, "flyer"));
+        } else if (ch === "D") {
+          this.enemies.push(new Enemy(wx, wy - 4, "duelist"));
+        } else if (ch === "M") {
+          this.enemies.push(new Enemy(wx, wy - 4, "mage"));
         } else if (ch === "B") {
           this.boss = new Boss(wx, wy - 10, this.game);
         }
@@ -235,10 +249,10 @@ export class LevelManager {
       );
     }
 
-    // Advance to next stage when crossing right exit boundary
+    // Advance to next stage when crossing right exit boundary (KEEPING current HP!)
     if (player.x > this.cols * VIEWPORT.TILE - 4) {
       if (this.currentIndex < STAGES.length - 1) {
-        this.load(this.currentIndex + 1, false);
+        this.load(this.currentIndex + 1, false, false);
       }
     }
   }
@@ -284,7 +298,6 @@ export class LevelManager {
             ctx.fillRect(wx + VIEWPORT.TILE - 1, wy, 1, VIEWPORT.TILE);
           }
           if (!openTop && !openBottom && !openLeft && !openRight) {
-            // Subtle varied masonry texture on interior blocks
             if ((r + c) % 3 === 0) {
               ctx.fillStyle = theme.tileEdge;
               ctx.fillRect(wx + 2, wy + 2, 2, 1);
@@ -308,13 +321,13 @@ export class LevelManager {
     for (const p of this.prompts) {
       if (p.reqSword && !player.hasSword) continue;
       if (p.hideOnSword && player.hasSword) continue;
-      if (player.x > p.x + 115) continue;
+      if (player.x > p.x + 150) continue;
       const bobY = p.y + Math.round(Math.sin(this.tick * 0.06) * 1.5);
       const color = p.reqSword ? PALETTE.swordGlow : PALETTE.textSubtle;
       drawPixelText(ctx, p.text, p.x, bobY, color, PALETTE.textShadow);
     }
 
-    // Right exit indicator (for stages 1-9)
+    // Right exit indicator (for stages 1-11)
     if (this.currentIndex < STAGES.length - 1) {
       const bobX = Math.round(Math.sin(this.tick * 0.1) * 2);
       drawPixelText(
@@ -347,7 +360,7 @@ export class LevelManager {
       }
     }
 
-    // Checkpoint Shrine
+    // Attunement Checkpoint Shrine
     if (this.checkpoint) {
       const cx = this.checkpoint.x;
       const cy = this.checkpoint.y;
@@ -358,11 +371,11 @@ export class LevelManager {
         ctx.fillRect(cx + 2, cy - 36, 4, 44);
       }
       ctx.fillStyle = theme.tileHighlight;
-      ctx.fillRect(cx, cy + 5, 8, 3);
+      ctx.fillRect(cx - 1, cy + 5, 10, 3);
       ctx.fillStyle = this.checkpoint.activated ? PALETTE.playerNoDash : PALETTE.textSubtle;
-      ctx.fillRect(cx + 2, cy - 1, 4, 6);
+      ctx.fillRect(cx + 2, cy - 2, 4, 7);
       ctx.fillStyle = this.checkpoint.activated ? PALETTE.white : theme.tileEdge;
-      ctx.fillRect(cx + 3, cy - 3, 2, 2);
+      ctx.fillRect(cx + 3, cy - 5, 2, 3);
     }
 
     // Starlight Relics
@@ -407,7 +420,7 @@ export class LevelManager {
       enemy.draw(ctx);
     }
 
-    // Stage 10 Boss
+    // Stage 12 Boss
     if (this.boss && !this.boss.dead) {
       this.boss.draw(ctx);
     }

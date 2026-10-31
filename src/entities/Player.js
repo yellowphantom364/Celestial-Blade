@@ -5,7 +5,8 @@ import { SpriteRenderer } from "../graphics/SpriteRenderer.js";
 
 /**
  * Player entity featuring 4-directional sword combat, 3-hit combo chains,
- * downward pogo bounce, wall-slide/wall-jump, horizontal dash, and Soul skills.
+ * downward pogo bounce, wall-slide/wall-jump, horizontal dash, and Hollow Knight-style
+ * Hold-to-Focus Soul Healing + Tap-to-Cast Astral Wave.
  */
 export class Player extends PhysicsBody {
   constructor(x, y, game) {
@@ -50,8 +51,11 @@ export class Player extends PhysicsBody {
     this.swingDidRecoil = false;
     this.invulnTimer = 0;
 
-    // Soul Focus & Astral Wave projectiles
+    // Hollow Knight-style Soul Focus channel & Astral Wave projectiles
+    this.skillHoldTimer = 0;
+    this.skillConsumedThisHold = false;
     this.focusTimer = 0;
+    this.focusFlashTimer = 0;
     this.waves = [];
 
     // Visual animation & Verlet scarf nodes
@@ -70,7 +74,10 @@ export class Player extends PhysicsBody {
     this.remY = 0;
     this.dashTimer = 0;
     this.attackTimer = 0;
+    this.skillHoldTimer = 0;
+    this.skillConsumedThisHold = false;
     this.focusTimer = 0;
+    this.focusFlashTimer = 0;
     this.pogoJumping = false;
     this.wallSliding = false;
     this.canDash = true;
@@ -89,7 +96,11 @@ export class Player extends PhysicsBody {
   takeDamage(amount = 1) {
     if (this.invulnTimer > 0 || this.game.deathSequence.active) return;
     this.hp = Math.max(0, this.hp - amount);
-    this.focusTimer = 0;
+    if (this.focusTimer > 0) {
+      this.focusTimer = 0;
+      this.skillConsumedThisHold = true;
+      this.game.particles.addFloatingText(this.x - 12, this.y - 8, "FOCUS BROKEN!", PALETTE.playerHair, 28);
+    }
     if (this.hp <= 0) {
       this.die();
     } else {
@@ -113,13 +124,68 @@ export class Player extends PhysicsBody {
   die() {
     if (this.game.deathSequence.active) return;
     this.hp = 0;
+    this.focusTimer = 0;
     this.game.startDeathSequence(this.x + this.w / 2, this.y + this.h / 2);
+  }
+
+  castAstralWave() {
+    this.soul -= PLAYER_CONFIG.SOUL_WAVE_COST;
+    this.game.sound.playWaveCast();
+    this.game.camera.shake(2.5, 5);
+    this.waves.push({
+      x: this.facing === 1 ? this.x + this.w : this.x - 10,
+      y: this.y + 1,
+      w: 10,
+      h: 7,
+      vx: this.facing * 4.8,
+      dir: this.facing,
+      life: 36,
+      hitSet: new Set()
+    });
+  }
+
+  completeFocusHeal() {
+    this.soul = Math.max(0, this.soul - PLAYER_CONFIG.SOUL_HEAL_COST);
+    this.focusTimer = 0;
+    this.focusFlashTimer = 18;
+    this.skillConsumedThisHold = true;
+    this.scaleX = 1.35;
+    this.scaleY = 0.72;
+
+    this.game.sound.playHeal();
+    this.game.hitstop = 5;
+    this.game.camera.shake(3.5, 9);
+    this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.white, PALETTE.soulCyan, 28);
+    this.game.particles.addShockwave(this.x + 3, this.y + 4, 26, PALETTE.white, 16);
+    this.game.particles.addFloatingText(this.x - 10, this.y - 10, "SOUL FOCUS!", PALETTE.white, 38);
+
+    // Spawn flying heart from player's body in screen-space directly into the HUD heart slot!
+    const targetHeartIndex = Math.min(this.maxHp - 1, this.hp);
+    const heartSpan = this.maxHp * 10;
+    const hudStartX = VIEWPORT.WIDTH - heartSpan - 6;
+    const targetScreenX = hudStartX + targetHeartIndex * 10;
+    const targetScreenY = 7;
+
+    const startScreenX = Math.round(this.x - this.game.camera.x);
+    const startScreenY = Math.round(this.y - this.game.camera.y);
+
+    this.game.particles.spawnFlyingHeart(
+      startScreenX,
+      startScreenY,
+      targetScreenX,
+      targetScreenY,
+      () => {
+        this.hp = Math.min(this.maxHp, this.hp + 1);
+        this.game.sound.playMenuSelect();
+        this.game.camera.shake(2, 4);
+      }
+    );
   }
 
   getSlashBounds() {
     const px = Math.round(this.x);
     const py = Math.round(this.y);
-    const finisherBonus = this.comboStep === 2 ? 4 : 0;
+    const finisherBonus = this.comboStep === 2 ? 6 : 0;
 
     if (this.atkDirY === -1) {
       return {
@@ -138,16 +204,16 @@ export class Player extends PhysicsBody {
     } else if (this.atkDirX === 1) {
       return {
         x: px + this.w - 2,
-        y: py - 4,
+        y: py - 4 - (this.comboStep === 2 ? 2 : 0),
         w: 24 + finisherBonus,
-        h: this.h + 8
+        h: this.h + 8 + (this.comboStep === 2 ? 4 : 0)
       };
     } else {
       return {
         x: px - 22 - finisherBonus,
-        y: py - 4,
+        y: py - 4 - (this.comboStep === 2 ? 2 : 0),
         w: 24 + finisherBonus,
-        h: this.h + 8
+        h: this.h + 8 + (this.comboStep === 2 ? 4 : 0)
       };
     }
   }
@@ -224,6 +290,7 @@ export class Player extends PhysicsBody {
     if (this.dashCooldown > 0) this.dashCooldown--;
     if (this.attackCooldown > 0) this.attackCooldown--;
     if (this.wallJumpLock > 0) this.wallJumpLock--;
+    if (this.focusFlashTimer > 0) this.focusFlashTimer--;
     if (this.comboResetTimer > 0) {
       this.comboResetTimer--;
       if (this.comboResetTimer === 0) this.comboStep = 0;
@@ -274,51 +341,86 @@ export class Player extends PhysicsBody {
 
     // Horizontal directional input
     const rawMove = (input.actionDown("right") ? 1 : 0) - (input.actionDown("left") ? 1 : 0);
-    const moveInput = this.wallJumpLock > 0 ? this.facing : rawMove;
-    if (rawMove !== 0 && this.attackTimer <= 0 && this.wallJumpLock <= 0) {
+
+    // --- HOLLOW KNIGHT-STYLE SOUL FOCUS HEAL (Hold Skill on ground) vs ASTRAL WAVE (Tap Skill) ---
+    const skillDown = input.actionDown("skill");
+    const canStartFocus =
+      this.hasSword &&
+      this.onGround &&
+      this.dashTimer <= 0 &&
+      this.attackTimer <= 0 &&
+      this.hp < this.maxHp &&
+      this.soul >= PLAYER_CONFIG.SOUL_HEAL_COST;
+
+    if (skillDown && this.hasSword) {
+      this.skillHoldTimer++;
+
+      if (!this.skillConsumedThisHold && canStartFocus && this.skillHoldTimer >= PLAYER_CONFIG.FOCUS_HOLD_THRESHOLD) {
+        // Channeling Soul Focus: immobilized, glowing white, rising soul wisps
+        this.focusTimer++;
+        this.vx = 0;
+
+        if (this.focusTimer === 1) {
+          this.game.particles.addFloatingText(this.x - 10, this.y - 8, "FOCUSING...", PALETTE.soulCyan, 22);
+        }
+
+        if (this.focusTimer % 5 === 0) {
+          const progressRatio = this.focusTimer / PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES;
+          this.game.sound.playFocusTick(progressRatio);
+          // Converging & rising white/cyan soul motes around the body
+          const offsetX = (Math.random() - 0.5) * 18;
+          const offsetY = (Math.random() - 0.5) * 14;
+          this.game.particles.spawn(
+            this.x + this.w / 2 + offsetX,
+            this.y + this.h / 2 + offsetY,
+            -offsetX * 0.08,
+            -0.45 - Math.random() * 0.4,
+            this.focusTimer % 10 === 0 ? PALETTE.white : PALETTE.soulCyan,
+            2,
+            14,
+            -0.01,
+            0.95
+          );
+        }
+
+        // Cancel focus if player jumps, dashes, attacks, or leaves ground
+        if (input.actionPressed("jump") || input.actionPressed("dash") || input.actionPressed("attack") || !this.onGround) {
+          this.focusTimer = 0;
+          this.skillConsumedThisHold = true;
+        } else if (this.focusTimer >= PLAYER_CONFIG.FOCUS_CHANNEL_FRAMES) {
+          this.completeFocusHeal();
+        }
+      } else if (!this.skillConsumedThisHold && this.skillHoldTimer === 1 && !canStartFocus) {
+        // Instant Astral Wave if airborne or already at full HP (or enough for wave but not heal)
+        if (this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST) {
+          this.castAstralWave();
+          this.skillConsumedThisHold = true;
+        }
+      }
+    } else {
+      // Released Skill button: if it was a quick tap before Focus started, cast Astral Wave!
+      if (
+        this.hasSword &&
+        !this.skillConsumedThisHold &&
+        this.skillHoldTimer > 0 &&
+        this.skillHoldTimer < PLAYER_CONFIG.FOCUS_HOLD_THRESHOLD + 6 &&
+        this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST
+      ) {
+        this.castAstralWave();
+      }
+      this.skillHoldTimer = 0;
+      this.skillConsumedThisHold = false;
+      this.focusTimer = 0;
+    }
+
+    const isFocusing = this.focusTimer > 0;
+    const moveInput = isFocusing ? 0 : this.wallJumpLock > 0 ? this.facing : rawMove;
+    if (!isFocusing && rawMove !== 0 && this.attackTimer <= 0 && this.wallJumpLock <= 0) {
       this.facing = rawMove;
     }
 
-    // Soul Ability: Heal (Down/Up + Skill or grounded missing HP) or Cast Astral Wave
-    if (this.hasSword && input.actionPressed("skill")) {
-      const wantsHeal =
-        (input.actionDown("up") || input.actionDown("down")) &&
-        this.hp < this.maxHp &&
-        this.soul >= PLAYER_CONFIG.SOUL_HEAL_COST;
-
-      if (wantsHeal) {
-        this.soul -= PLAYER_CONFIG.SOUL_HEAL_COST;
-        this.hp = Math.min(this.maxHp, this.hp + 1);
-        this.game.sound.playHeal();
-        this.game.hitstop = 4;
-        this.game.camera.shake(2.5, 6);
-        this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.soulCyan, PALETTE.white, 22);
-        this.game.particles.addFloatingText(this.x - 6, this.y - 6, "+1 HEART", PALETTE.soulCyan);
-      } else if (this.soul >= PLAYER_CONFIG.SOUL_WAVE_COST) {
-        this.soul -= PLAYER_CONFIG.SOUL_WAVE_COST;
-        this.game.sound.playWaveCast();
-        this.game.camera.shake(2.5, 5);
-        this.waves.push({
-          x: this.facing === 1 ? this.x + this.w : this.x - 10,
-          y: this.y + 1,
-          w: 10,
-          h: 7,
-          vx: this.facing * 4.8,
-          dir: this.facing,
-          life: 36,
-          hitSet: new Set()
-        });
-      } else if (this.hp < this.maxHp && this.soul >= PLAYER_CONFIG.SOUL_HEAL_COST) {
-        this.soul -= PLAYER_CONFIG.SOUL_HEAL_COST;
-        this.hp = Math.min(this.maxHp, this.hp + 1);
-        this.game.sound.playHeal();
-        this.game.particles.spawnBurst(this.x + 3, this.y + 4, PALETTE.soulCyan, PALETTE.white, 20);
-        this.game.particles.addFloatingText(this.x - 6, this.y - 6, "+1 HEART", PALETTE.soulCyan);
-      }
-    }
-
     // Dash Initiation
-    if (input.actionPressed("dash") && this.canDash && this.dashCooldown <= 0) {
+    if (!isFocusing && input.actionPressed("dash") && this.canDash && this.dashCooldown <= 0) {
       this.canDash = false;
       this.pogoJumping = false;
       this.wallSliding = false;
@@ -351,6 +453,10 @@ export class Player extends PhysicsBody {
       if (this.dashTimer === 0) {
         this.vx *= 0.5;
       }
+    } else if (isFocusing) {
+      // Immobilized while channeling Soul Focus
+      this.vx = 0;
+      this.vy = Math.min(PLAYER_CONFIG.MAX_FALL_SPEED, this.vy + PLAYER_CONFIG.GRAVITY_FALL);
     } else {
       const maxRun = PLAYER_CONFIG.MAX_RUN_SPEED;
       const accel = this.onGround ? PLAYER_CONFIG.GROUND_ACCEL : PLAYER_CONFIG.AIR_ACCEL;
@@ -464,8 +570,8 @@ export class Player extends PhysicsBody {
       this.vy = Math.min(maxFall, this.vy + gravity);
     }
 
-    // 4-Directional Attack & 3-Hit Combo Initiation
-    if (this.hasSword && input.actionPressed("attack") && this.attackCooldown <= 0) {
+    // 4-Directional Attack & 3-Hit Combo Initiation (Forehand -> Backhand -> Solar Finisher!)
+    if (!isFocusing && this.hasSword && input.actionPressed("attack") && this.attackCooldown <= 0) {
       if (this.comboResetTimer > 0) {
         this.comboStep = (this.comboStep + 1) % 3;
       } else {
@@ -489,6 +595,17 @@ export class Player extends PhysicsBody {
         if (rawMove !== 0) this.facing = rawMove;
         this.atkDirX = this.facing;
         this.atkDirY = 0;
+        // Subtle forward lunge on 3rd hit Solar Finisher
+        if (this.comboStep === 2 && this.onGround) {
+          this.vx = this.facing * 2.1;
+          this.game.particles.spawnBurst(
+            this.x + this.w / 2,
+            this.y + this.h / 2,
+            PALETTE.swordCombo,
+            PALETTE.white,
+            10
+          );
+        }
       }
     }
 
@@ -549,28 +666,39 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Checkpoint Shrine interaction
+    // Attunement Checkpoint Shrine interaction (restores HP and binds respawn point!)
     if (level.checkpoint) {
       const cp = level.checkpoint;
       if (
-        !cp.activated &&
         this.x < cp.x + 14 &&
         this.x + this.w > cp.x - 6 &&
         this.y < cp.y + 16 &&
         this.y + this.h > cp.y - 16
       ) {
-        cp.activated = true;
-        this.spawnX = cp.x;
-        this.spawnY = cp.y - 1;
-        this.hp = this.maxHp;
-        this.addSoul(40);
-        this.game.checkpointStage = level.currentIndex;
-        this.game.checkpointX = cp.x;
-        this.game.checkpointY = cp.y - 1;
-        this.game.sound.playCheckpoint();
-        this.game.camera.shake(3, 8);
-        this.game.particles.spawnBurst(cp.x + 4, cp.y, PALETTE.playerNoDash, PALETTE.white, 26);
-        this.game.particles.addFloatingText(cp.x - 16, cp.y - 10, "SHRINE ATTUNED", PALETTE.playerNoDash, 42);
+        const needsHealOrBind =
+          !cp.activated ||
+          this.hp < this.maxHp ||
+          this.game.checkpointStage !== level.currentIndex;
+
+        if (needsHealOrBind) {
+          cp.activated = true;
+          this.spawnX = cp.x;
+          this.spawnY = cp.y - 1;
+          this.hp = this.maxHp;
+          this.addSoul(40);
+          this.game.bindCheckpoint(level.currentIndex, cp.x, cp.y - 1);
+          this.game.sound.playCheckpoint();
+          this.game.camera.shake(3, 8);
+          this.game.particles.spawnBurst(cp.x + 4, cp.y, PALETTE.playerNoDash, PALETTE.white, 26);
+          this.game.particles.addShockwave(cp.x + 4, cp.y, 26, PALETTE.playerNoDash, 16);
+          this.game.particles.addFloatingText(
+            cp.x - 22,
+            cp.y - 10,
+            "SHRINE ATTUNED - HP RESTORED",
+            PALETTE.playerNoDash,
+            46
+          );
+        }
       }
     }
 
@@ -643,12 +771,27 @@ export class Player extends PhysicsBody {
       }
     }
 
-    // Enemy & Boss contact damage (dash grants brief evasion i-frames)
+    // Enemy, Enemy Projectile & Boss contact damage (dash grants brief evasion i-frames)
     if (this.invulnTimer <= 0 && this.dashTimer <= 0) {
       for (const enemy of level.enemies) {
         if (!enemy.dead && !enemy.isDummy && enemy.knockbackTimer <= 0 && this.intersects(enemy)) {
           this.takeDamage(1);
           return;
+        }
+        if (enemy.projectiles && enemy.projectiles.length > 0) {
+          for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
+            const proj = enemy.projectiles[i];
+            if (
+              this.x < proj.x + proj.w &&
+              this.x + this.w > proj.x &&
+              this.y < proj.y + proj.h &&
+              this.y + this.h > proj.y
+            ) {
+              enemy.projectiles.splice(i, 1);
+              this.takeDamage(1);
+              return;
+            }
+          }
         }
       }
       if (level.boss && !level.boss.dead && this.intersects(level.boss)) {
@@ -675,11 +818,35 @@ export class Player extends PhysicsBody {
 
   checkActiveSlash(level) {
     const hb = this.getSlashBounds();
-    const damage = this.comboStep === 2 ? 2 : 1;
+    const isFinisher = this.comboStep === 2;
+    const damage = isFinisher ? 2 : 1;
     let hitEnemyThisFrame = false;
 
     for (const enemy of level.enemies) {
-      if (enemy.dead || this.swingHitTargets.has(enemy)) continue;
+      if (enemy.dead) continue;
+
+      // Deflect enemy projectiles with blade slash!
+      if (enemy.projectiles && enemy.projectiles.length > 0) {
+        for (let i = enemy.projectiles.length - 1; i >= 0; i--) {
+          const proj = enemy.projectiles[i];
+          if (
+            hb.x < proj.x + proj.w &&
+            hb.x + hb.w > proj.x &&
+            hb.y < proj.y + proj.h &&
+            hb.y + hb.h > proj.y
+          ) {
+            enemy.projectiles.splice(i, 1);
+            hitEnemyThisFrame = true;
+            this.addSoul(16);
+            this.invulnTimer = Math.max(this.invulnTimer, PLAYER_CONFIG.INVULN_PARRY_FRAMES);
+            this.game.sound.playHit(true);
+            this.game.particles.spawnBurst(proj.x + 2, proj.y + 2, PALETTE.soulCyan, PALETTE.white, 12);
+            this.game.particles.addFloatingText(proj.x - 8, proj.y - 6, "PARRY!", PALETTE.soulCyan, 24);
+          }
+        }
+      }
+
+      if (this.swingHitTargets.has(enemy)) continue;
       if (
         hb.x < enemy.x + enemy.w &&
         hb.x + hb.w > enemy.x &&
@@ -689,6 +856,15 @@ export class Player extends PhysicsBody {
         this.swingHitTargets.add(enemy);
         hitEnemyThisFrame = true;
         enemy.takeHit(this.atkDirX, this.atkDirY, this.game, damage);
+        if (isFinisher && !enemy.isDummy) {
+          this.game.particles.addFloatingText(
+            enemy.x - 10,
+            enemy.y - 8,
+            "SOLAR FINISHER! 2X",
+            PALETTE.swordCombo,
+            30
+          );
+        }
       }
     }
 
@@ -705,6 +881,9 @@ export class Player extends PhysicsBody {
         this.swingHitTargets.add(b);
         hitEnemyThisFrame = true;
         b.takeHit(this.atkDirX, this.atkDirY, this.game, damage);
+        if (isFinisher) {
+          this.game.particles.addFloatingText(b.x - 10, b.y - 10, "SOLAR FINISHER! 2X", PALETTE.swordCombo, 30);
+        }
       }
 
       for (let i = b.projectiles.length - 1; i >= 0; i--) {
