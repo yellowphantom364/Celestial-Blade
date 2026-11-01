@@ -1,13 +1,52 @@
+@font-face {
+  font-family: "Cyberpunk Plex Sans";
+  src: local("IBM Plex Sans"), local("IBMPlexSans"), local("Helvetica Neue"), local("Arial");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cyberpunk Plex Mono";
+  src: local("IBM Plex Mono"), local("IBMPlexMono"), local("JetBrains Mono"), local("SF Mono"), local("Menlo");
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --bg-void: #06070e;
-  --bg-frame: #0c0f1d;
-  --bg-panel: rgba(13, 16, 33, 0.88);
-  --border-subtle: rgba(92, 117, 184, 0.28);
-  --border-glow: rgba(254, 211, 48, 0.45);
-  --accent-gold: #fed330;
-  --accent-crimson: #ff3864;
-  --accent-cyan: #54c6eb;
-  --text-primary: #e2e8f0;
-  --text-muted: #7c8db5;
-  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+  /* Authoritative Cyberpunk Design System Tokens */
+  --dp-color-ground: #020303;
+  --dp-color-accent: #38ff8e;
+  --dp-color-interference: #ff65d8;
+  --dp-color-registration: #65f8ff;
+  --dp-color-ink: #f8fffa;
+  --dp-color-ink-body: #d3dbd5;
+  --dp-color-ink-muted: #c2cbc5;
+  --dp-color-plate: #090e0b;
+  --dp-color-line: #304c3b;
+  --dp-color-control-line: #659579;
+  --dp-typography-display: "Cyberpunk Plex Sans", "IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --dp-typography-mono: "Cyberpunk Plex Mono", "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  --dp-typography-small: 14px;
+  --dp-typography-label: 12px;
+  --dp-typography-metadata: 11px;
+  --dp-spacing-gutter: clamp(22px, 4.5cqi, 72px);
+  --dp-spacing-column-gap: 50px;
+  --dp-radius-control: 0;
+  --dp-border-hairline: 1px;
+  --dp-motion-interaction: 0s;
+
+  /* Legacy compatibility aliases */
+  --bg-void: var(--dp-color-ground);
+  --bg-frame: var(--dp-color-plate);
+  --bg-panel: var(--dp-color-plate);
+  --border-subtle: var(--dp-color-line);
+  --border-glow: var(--dp-color-accent);
+  --accent-gold: var(--dp-color-accent);
+  --accent-crimson: var(--dp-color-interference);
+  --accent-cyan: var(--dp-color-registration);
+  --text-primary: var(--dp-color-ink);
+  --text-muted: var(--dp-color-ink-muted);
+  --font-mono: var(--dp-typography-mono);
 }

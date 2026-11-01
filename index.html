@@ -5,33 +5,917 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta
     name="description"
-    content="Celestial Blade: Echoes of the Eclipse — A 16-bit dark-celestial 2D action-platformer featuring 4-directional blade combat, aerial pogo bounces, Soul Focus healing, and a multi-phase boss encounter."
+    content="Celestial Blade: Echoes of the Eclipse — A 16-bit dark-celestial 2D action-platformer built with vanilla JavaScript and HTML5 Canvas. Features 4-directional sword combat, aerial pogo bounces, Soul Focus healing, Attunement Shrines, and 12 handcrafted stages."
   />
-  <title>Celestial Blade — Echoes of the Eclipse</title>
+  <title>CELESTIAL BLADE — Echoes of the Eclipse</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="./css/main.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <div id="viewport-frame" class="viewport-frame">
-      <canvas id="game" width="320" height="180" tabindex="0"></canvas>
-    </div>
+  <a href="#play-viewport" class="skip-link">SKIP TO PLAYABLE VIEWPORT</a>
 
-    <footer class="status-bar" aria-label="Controls and display options">
-      <div class="status-bar__left">
-        <span class="status-pill"><kbd>Arrows</kbd>/<kbd>WASD</kbd> Move</span>
-        <span class="status-pill"><kbd>Z</kbd>/<kbd>Space</kbd> Jump</span>
-        <span class="status-pill"><kbd>X</kbd>/<kbd>J</kbd> 3-Hit Slash</span>
-        <span class="status-pill"><kbd>C</kbd>/<kbd>Shift</kbd> Dash</span>
-        <span class="status-pill"><kbd>Tap V/F</kbd> Wave</span>
-        <span class="status-pill"><kbd>Hold V/F</kbd> Focus Heal</span>
-        <span class="status-pill"><kbd>Esc</kbd> Pause</span>
+  <!-- Compact Monospaced Top Utility Header -->
+  <header class="top-bar">
+    <div class="top-bar__inner">
+      <div class="top-bar__brand">
+        <span class="signal-dot" aria-hidden="true"></span>
+        <span>CB-01 // CELESTIAL BLADE</span>
       </div>
-      <div class="status-bar__right">
-        <button id="btn-mute" class="status-btn" type="button">AUDIO: ON [M]</button>
-        <button id="btn-crt" class="status-btn" type="button">CRT: OFF [T]</button>
-        <button id="btn-fullscreen" class="status-btn" type="button">FULLSCREEN</button>
-      </div>
-    </footer>
+      <div class="top-bar__meta">BUILD 1.0.0 · 320×180 NATIVE CANVAS · 60 HZ FIXED STEP</div>
+      <nav class="top-bar__nav" aria-label="Primary site sections">
+        <a href="#play-viewport" class="top-bar__link">[01] VIEWPORT</a>
+        <a href="#combat-matrix" class="top-bar__link">[02] COMBAT</a>
+        <a href="#realm-atlas" class="top-bar__link">[03] REALM ATLAS</a>
+        <a href="#loadout-records" class="top-bar__link">[04] RECORDS</a>
+        <a href="#engine-specs" class="top-bar__link">[05] SPECS</a>
+        <a
+          href="https://github.com/yellowphantom364/Celestial-Blade"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="top-bar__link"
+        >GITHUB ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="signal-rail-track">
+
+      <!-- [00] OPENING HERO SECTION -->
+      <section class="rail-section hero-section" aria-labelledby="hero-title">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">00</span>
+        </div>
+
+        <div class="hero-topline">
+          <div class="hero-channel">
+            <span>SYS.REC // 2D DARK-CELESTIAL ACTION PLATFORMER</span>
+            <span class="interference-tag">VANILLA ES6 + HTML5 CANVAS</span>
+          </div>
+          <span class="top-bar__meta">BY GEORGE LIN (@YELLOWPHANTOM364)</span>
+        </div>
+
+        <div class="hero-header-grid">
+          <h1 id="hero-title" class="hero-title">
+            <span class="hero-title__line">CELESTIAL</span>
+            <span class="hero-title__line hero-title__accent">BLADE</span>
+          </h1>
+
+          <!-- Compact Geometric Signal Object to the right of the opening title -->
+          <aside class="signal-object" aria-label="Eclipse Sanctum geometric telemetry diagram">
+            <svg
+              class="signal-object__svg"
+              viewBox="0 0 220 156"
+              width="220"
+              height="156"
+              role="img"
+              aria-label="Astral Blade and Eclipse reticle vector diagram"
+            >
+              <rect x="1" y="1" width="218" height="154" fill="#050806" stroke="#304c3b" stroke-width="1" />
+              <!-- Grid hairs -->
+              <line x1="0" y1="78" x2="220" y2="78" stroke="#304c3b" stroke-width="1" stroke-dasharray="3 3" />
+              <line x1="110" y1="0" x2="110" y2="156" stroke="#304c3b" stroke-width="1" stroke-dasharray="3 3" />
+              <!-- Static cyan registration & magenta interference marks -->
+              <polyline points="12,26 12,12 26,12" fill="none" stroke="#65f8ff" stroke-width="1.5" />
+              <polyline points="208,130 208,144 194,144" fill="none" stroke="#ff65d8" stroke-width="1.5" />
+              <!-- Outer Eclipse Ring -->
+              <circle cx="110" cy="78" r="52" fill="none" stroke="#659579" stroke-width="1" />
+              <circle cx="110" cy="78" r="38" fill="#020303" stroke="#38ff8e" stroke-width="1.5" />
+              <!-- Crescent Eclipse Cut -->
+              <circle cx="121" cy="72" r="30" fill="#090e0b" stroke="#ff65d8" stroke-width="1" />
+              <!-- Vertical Astral Blade Vector -->
+              <polygon points="110,14 116,74 110,142 104,74" fill="#38ff8e" fill-opacity="0.22" stroke="#38ff8e" stroke-width="1.2" />
+              <line x1="92" y1="74" x2="128" y2="74" stroke="#f8fffa" stroke-width="2" />
+              <rect x="107" y="71" width="6" height="6" fill="#f8fffa" />
+              <!-- Coordinate Labels -->
+              <text x="14" y="144" fill="#c2cbc5" font-family="monospace" font-size="9">CH.I–XII</text>
+              <text x="152" y="21" fill="#38ff8e" font-family="monospace" font-size="9">60.0 FPS</text>
+            </svg>
+            <div class="signal-object__caption">
+              <span>SIGNAL: LOCKED</span>
+              <span>SERAPH VAEL // XII</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="hero-body">
+          <p class="hero-lead">
+            Built from scratch without commercial game engines, <strong>Celestial Blade: Echoes of the Eclipse</strong> pairs deterministic 60 FPS platforming with a high-stakes Soul economy. Chain <strong>3-hit Solar Combos</strong>, pogo off crystal spikes and hostile blades to reset your air dash, parry incoming projectiles, and attune at ancient Shrines across <strong>12 handcrafted stages</strong> before confronting Seraph Vael.
+          </p>
+
+          <div class="action-cluster">
+            <button type="button" class="btn-primary" data-focus-game data-target-stage="">
+              ENGAGE LIVE BUILD ↓
+            </button>
+            <button type="button" class="btn-secondary" data-focus-game data-target-stage="11">
+              WARP TO BOSS [CH. XII]
+            </button>
+            <a
+              href="https://platformer-chi-one.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-secondary"
+            >
+              VERCEL MIRROR ↗
+            </a>
+            <a
+              href="https://github.com/yellowphantom364/Celestial-Blade"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-secondary"
+            >
+              SOURCE CODE ↗
+            </a>
+          </div>
+        </div>
+
+        <!-- Tightly Ruled Facts Row -->
+        <div class="facts-row" role="region" aria-label="Technical and gameplay specifications">
+          <div class="fact-cell">
+            <span class="fact-cell__code">SPEC // 01 · RESOLUTION</span>
+            <span class="fact-cell__value">320×180 @ 60HZ</span>
+            <span class="fact-cell__desc">Integer-scaled pixel viewport with 8×8 tile collision and 16.67ms fixed physics step.</span>
+          </div>
+          <div class="fact-cell">
+            <span class="fact-cell__code">SPEC // 02 · WORLD SCOPE</span>
+            <span class="fact-cell__value">12 STAGES · 4 BIOMES</span>
+            <span class="fact-cell__desc">Silent Precipice, Crimson Bastion (80×36), Grand Labyrinth (120×60), and Eclipse Sanctum.</span>
+          </div>
+          <div class="fact-cell">
+            <span class="fact-cell__code">SPEC // 03 · COMBAT LOOP</span>
+            <span class="fact-cell__value">POGO · PARRY · FOCUS</span>
+            <span class="fact-cell__desc">4-directional slashes, 2× Solar Finisher, spike/orb deflection, and 60-Soul Focus healing.</span>
+          </div>
+          <div class="fact-cell">
+            <span class="fact-cell__code">SPEC // 04 · ARCHITECTURE</span>
+            <span class="fact-cell__value">0 DEPENDENCIES</span>
+            <span class="fact-cell__desc">19 vanilla ES modules (188 KB bundle) with real-time Web Audio API synth soundtracks.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- [01] LIVE INTERACTIVE BUILD & TELEMETRY -->
+      <section id="play-viewport" class="rail-section" aria-labelledby="heading-viewport">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">01</span>
+        </div>
+
+        <div class="split-section">
+          <div class="section-intro">
+            <span class="section-kicker">LIVE EXECUTABLE // CANVAS</span>
+            <h2 id="heading-viewport" class="section-heading">INTERACTIVE RUNTIME</h2>
+            <p class="section-copy">
+              Play the complete build directly in the frame. Click inside the viewport to arm keyboard capture, or select any chapter below to inspect specific combat encounters and level geometry immediately.
+            </p>
+            <p class="section-note">
+              While the viewport is focused, arrow keys and <kbd>Space</kbd> drive the knight. Click outside the frame or press <kbd>Tab</kbd> to navigate the rest of the specification sheet.
+            </p>
+
+            <!-- Live LocalStorage Telemetry Panel -->
+            <div class="telemetry-panel" aria-label="Local save telemetry">
+              <div class="telemetry-panel__header">
+                <span>SAVE TELEMETRY (LOCALSTORAGE)</span>
+                <span class="signal-dot" aria-hidden="true"></span>
+              </div>
+              <ul class="telemetry-list">
+                <li class="telemetry-row">
+                  <span class="telemetry-row__label">BEST CLEAR TIME</span>
+                  <span id="telemetry-best-time" class="telemetry-row__val">--:--.--</span>
+                </li>
+                <li class="telemetry-row">
+                  <span class="telemetry-row__label">LOWEST RUN DEATHS</span>
+                  <span id="telemetry-lowest-deaths" class="telemetry-row__val">--</span>
+                </li>
+                <li class="telemetry-row">
+                  <span class="telemetry-row__label">STARLIGHT RELICS</span>
+                  <span id="telemetry-relics" class="telemetry-row__val">0 / 5</span>
+                </li>
+                <li class="telemetry-row">
+                  <span class="telemetry-row__label">HOSTILES VANQUISHED</span>
+                  <span id="telemetry-kills" class="telemetry-row__val">0</span>
+                </li>
+                <li class="telemetry-row">
+                  <span class="telemetry-row__label">ATTUNED SHRINES</span>
+                  <span id="telemetry-shrines" class="telemetry-row__val">CH. I</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Instant Stage / Chapter Loader -->
+            <div class="stage-loader">
+              <span class="stage-loader__label">DIRECT STAGE INJECTION //</span>
+              <div class="stage-loader__grid">
+                <button type="button" class="stage-chip" data-load-stage="0">
+                  CH.I · PRECIPICE
+                </button>
+                <button type="button" class="stage-chip" data-load-stage="1">
+                  CH.II · BLADE SHRINE
+                </button>
+                <button type="button" class="stage-chip" data-load-stage="4">
+                  CH.V · BASTION KEEP
+                </button>
+                <button type="button" class="stage-chip" data-load-stage="6">
+                  CH.VII · CLOISTER
+                </button>
+                <button type="button" class="stage-chip" data-load-stage="10">
+                  CH.XI · LABYRINTH
+                </button>
+                <button type="button" class="stage-chip" data-load-stage="11">
+                  CH.XII · SERAPH VAEL
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Playable Game Viewport & Hardware Status Bar -->
+          <div class="viewport-deck">
+            <div class="viewport-deck__topbar">
+              <span id="viewport-stage-label" class="viewport-deck__id">CH.I // SILENT PRECIPICE</span>
+              <span id="viewport-focus-status" class="viewport-focus-badge">INPUT: STANDBY [CLICK CANVAS]</span>
+            </div>
+
+            <div id="viewport-frame" class="viewport-frame">
+              <canvas
+                id="game"
+                width="320"
+                height="180"
+                tabindex="0"
+                aria-label="Celestial Blade playable action platformer canvas"
+              ></canvas>
+            </div>
+
+            <footer class="status-bar" aria-label="Controls and display options">
+              <div id="status-keycaps" class="status-bar__left">
+                <span class="status-pill"><kbd>ARROWS</kbd>/<kbd>WASD</kbd> MOVE</span>
+                <span class="status-pill"><kbd>Z</kbd>/<kbd>SPACE</kbd> JUMP</span>
+                <span class="status-pill"><kbd>X</kbd>/<kbd>J</kbd> 3-HIT SLASH</span>
+                <span class="status-pill"><kbd>DOWN+X</kbd> POGO</span>
+                <span class="status-pill"><kbd>C</kbd>/<kbd>SHIFT</kbd> DASH</span>
+                <span class="status-pill"><kbd>TAP V/F</kbd> WAVE</span>
+                <span class="status-pill"><kbd>HOLD V/F</kbd> FOCUS HEAL</span>
+                <span class="status-pill"><kbd>ESC</kbd> PAUSE</span>
+              </div>
+              <div class="status-bar__right">
+                <button id="btn-mute" class="status-btn" type="button">AUDIO: ON [M]</button>
+                <button id="btn-crt" class="status-btn" type="button">CRT: OFF [T]</button>
+                <button id="btn-fullscreen" class="status-btn" type="button">FULLSCREEN</button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      </section>
+
+      <!-- [02] COMBAT & SOUL ARCHITECTURE (Open Ruled Matrix + Continuous Process Track) -->
+      <section id="combat-matrix" class="rail-section" aria-labelledby="heading-combat">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">02</span>
+        </div>
+
+        <div class="split-section">
+          <div class="section-intro">
+            <span class="section-kicker">MECHANICS // FRAME DATA</span>
+            <h2 id="heading-combat" class="section-heading">BLADE, POGO &amp; SOUL ECONOMY</h2>
+            <p class="section-copy">
+              Inspired by <em>Hollow Knight</em> and <em>Celeste</em>, movement and combat share a unified physics body. Every strike harvests Soul energy and alters momentum—whether recoiling upward off a spike bed or parrying an astral orb mid-flight.
+            </p>
+            <p class="section-note">
+              Health never auto-refills between rooms. Clearing a stage carries your exact HP and Soul gauge forward until you channel Focus or reach an Attunement Shrine.
+            </p>
+          </div>
+
+          <div class="matrix-and-track">
+            <!-- 6-Cell Open Ruled Feature Matrix -->
+            <div class="feature-matrix" role="list" aria-label="Core combat and movement capabilities">
+              <article class="matrix-cell" role="listitem">
+                <div class="matrix-cell__meta">
+                  <span>SYS.01 // MELEE</span>
+                  <span>8F ACTIVE</span>
+                </div>
+                <h3 class="matrix-cell__title">3-HIT SOLAR COMBO</h3>
+                <p class="matrix-cell__copy">
+                  Chain three rapid slashes within a 28-frame combo window. The third swing unleashes a forward-lunging Solar Finisher that deals 2× damage (2 HP) with expanded reach.
+                </p>
+                <div class="matrix-cell__spec">COOLDOWN: 10F · FINISHER LUNGE: 2.1 PX/F</div>
+              </article>
+
+              <article class="matrix-cell" role="listitem">
+                <div class="matrix-cell__meta">
+                  <span>SYS.02 // AERIAL</span>
+                  <span>-3.58 VY</span>
+                </div>
+                <h3 class="matrix-cell__title">POGO &amp; DASH RESET</h3>
+                <p class="matrix-cell__copy">
+                  Hold <kbd>Down + Slash</kbd> in mid-air to strike beneath you. Connecting with any enemy, boss, or crystal spike launches you upward and immediately refreshes your air dash.
+                </p>
+                <div class="matrix-cell__spec">RECOIL I-FRAMES: 12F · AIR DASH RESET: INSTANT</div>
+              </article>
+
+              <article class="matrix-cell" role="listitem">
+                <div class="matrix-cell__meta">
+                  <span>SYS.03 // DEFENSE</span>
+                  <span>14F I-FRAMES</span>
+                </div>
+                <h3 class="matrix-cell__title">PROJECTILE ORB PARRY</h3>
+                <p class="matrix-cell__copy">
+                  Slash incoming Void Mage, Astral Construct, or Seraph Vael orbs to shatter them on contact, granting bonus Soul (+16 to +22) and 14 frames of invulnerability.
+                </p>
+                <div class="matrix-cell__spec">SOUL GAIN: +16 ENEMY / +22 BOSS ORB</div>
+              </article>
+
+              <article class="matrix-cell" role="listitem">
+                <div class="matrix-cell__meta">
+                  <span>SYS.04 // MOBILITY</span>
+                  <span>9F BURST</span>
+                </div>
+                <h3 class="matrix-cell__title">ASTRAL DASH &amp; COYOTE</h3>
+                <p class="matrix-cell__copy">
+                  Burst horizontally at 4.35 px/frame while phasing through enemy bodies and projectiles. Assisted by 6-frame coyote time, 6-frame jump buffering, and 3px corner correction.
+                </p>
+                <div class="matrix-cell__spec">DASH COOLDOWN: 14F · WALL JUMP: 2.35 VX / -3.45 VY</div>
+              </article>
+
+              <article class="matrix-cell" role="listitem">
+                <div class="matrix-cell__meta">
+                  <span>SYS.05 // SOUL SKILL</span>
+                  <span>45 / 60 SOUL</span>
+                </div>
+                <h3 class="matrix-cell__title">WAVE CAST vs. FOCUS HEAL</h3>
+                <p class="matrix-cell__copy">
+                  Tap <kbd>V</kbd>/<kbd>F</kbd> (45 Soul) to fire a piercing Astral Wave dealing 2 damage across enemies, or hold grounded for 48 frames (60 Soul) to restore 1 full Heart.
+                </p>
+                <div class="matrix-cell__spec">WAVE SPEED: 4.8 PX/F · FOCUS CHANNEL: 0.80 SEC</div>
+              </article>
+
+              <article class="matrix-cell" role="listitem">
+                <div class="matrix-cell__meta">
+                  <span>SYS.06 // CHECKPOINT</span>
+                  <span>3 SHRINES</span>
+                </div>
+                <h3 class="matrix-cell__title">ATTUNEMENT SHRINES</h3>
+                <p class="matrix-cell__copy">
+                  Discover Shrines in Silent Precipice (CH. I), Crimson Bastion (CH. V), and The Grand Labyrinth (CH. XI) to restore full HP, bind your respawn point, and unlock Shrine Warp.
+                </p>
+                <div class="matrix-cell__spec">RELIC UPGRADE: 3/5 RELICS = 4 MAX HEARTS</div>
+              </article>
+            </div>
+
+            <!-- Connected Vertical Process Track -->
+            <div class="process-track" aria-label="Soul combat and survival loop">
+              <div class="process-track__header">
+                <span>CONTINUOUS COMBAT TRACK // SOUL HARVEST TO SURVIVAL</span>
+                <span>MAX CAPACITY: 100 SOUL</span>
+              </div>
+              <ol class="process-list">
+                <li class="process-step">
+                  <span class="process-step__num">01</span>
+                  <span class="process-step__title">ENGAGE &amp; HARVEST</span>
+                  <span class="process-step__desc">Every blade strike yields +18 Soul (+25 on kill). Parrying hostile orbs adds +16 to +22 Soul while negating damage.</span>
+                  <span class="process-step__token">+18 / +25 SOUL</span>
+                </li>
+                <li class="process-step">
+                  <span class="process-step__num">02</span>
+                  <span class="process-step__title">CHAIN AERIAL MOMENTUM</span>
+                  <span class="process-step__desc">Down-slash enemies or crystal spikes to pogo across chasms, resetting your Astral Dash without touching solid ground.</span>
+                  <span class="process-step__token">DASH REFRESHED</span>
+                </li>
+                <li class="process-step">
+                  <span class="process-step__num">03</span>
+                  <span class="process-step__title">TACTICAL SOUL ALLOCATION</span>
+                  <span class="process-step__desc">Spend 45 Soul on an Astral Wave to pierce shielded Crimson Vanguards, or commit to a 48-frame stationary Focus channel (60 Soul) to mend 1 Heart.</span>
+                  <span class="process-step__token">45 WAVE // 60 HEAL</span>
+                </li>
+                <li class="process-step">
+                  <span class="process-step__num">04</span>
+                  <span class="process-step__title">BIND AT ATTUNEMENT SHRINES</span>
+                  <span class="process-step__desc">Carry surviving health through stage exits until you reach an Altar in Chapters I, V, or XI to permanently unlock cross-realm Shrine Warping.</span>
+                  <span class="process-step__token">RESPAWN BOUND</span>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- [03] REALM ATLAS & BESTIARY (Editorial Group: 1 Large Clipped Image + 3 Smaller Entries) -->
+      <section id="realm-atlas" class="rail-section" aria-labelledby="heading-atlas">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">03</span>
+        </div>
+
+        <div class="split-section">
+          <div class="section-intro">
+            <span class="section-kicker">EDITORIAL RECORD // 12 STAGES</span>
+            <h2 id="heading-atlas" class="section-heading">ARCHITECTURE &amp; HOSTILES</h2>
+            <p class="section-copy">
+              The ascent spans four distinct biomes—from mist-shrouded ruins to the 120×60 tile Grand Labyrinth where three Sanctum Keys unseal the Fallen Warden’s chamber.
+            </p>
+            <p class="section-note">
+              Five Starlight Relics are hidden off the main path in Stages III, V, VI, X, and XI. Collecting any three permanently increases your vessel from 3 to 4 Hearts.
+            </p>
+          </div>
+
+          <div class="editorial-group">
+            <!-- Lead Editorial Plate with Clipped Corner -->
+            <article class="editorial-lead">
+              <div class="editorial-lead__media">
+                <img
+                  id="plate-lead-sanctum"
+                  class="editorial-plate__img"
+                  width="960"
+                  height="540"
+                  alt="Grayscale capture of Chapter XII Eclipse Sanctum where the knight confronts Seraph Vael beneath twin stone platforms"
+                  src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 540' width='960' height='540'%3E%3Crect width='960' height='540' fill='%230b0e0d'/%3E%3Ccircle cx='710' cy='130' r='68' fill='%23d3dbd5' fill-opacity='0.85'/%3E%3Ccircle cx='728' cy='120' r='54' fill='%230b0e0d'/%3E%3Cpolygon points='0,420 220,250 410,370 640,210 960,390 960,540 0,540' fill='%23161c19'/%3E%3Crect x='0' y='432' width='960' height='108' fill='%23242e29'/%3E%3Crect x='168' y='300' width='140' height='24' fill='%233b4942'/%3E%3Crect x='652' y='300' width='140' height='24' fill='%233b4942'/%3E%3Crect x='220' y='398' width='22' height='34' fill='%23f8fffa'/%3E%3Crect x='690' y='376' width='44' height='56' fill='%23c2cbc5'/%3E%3C/svg%3E"
+                />
+              </div>
+              <div class="editorial-lead__body">
+                <div class="editorial-lead__meta">
+                  <span>PLATE 01 // CH. XII · ECLIPSE SANCTUM</span>
+                  <span>BOSS ENCOUNTER: 24 HP</span>
+                </div>
+                <h3 class="editorial-lead__title">SERAPH VAEL, WARDEN OF THE ECLIPSE</h3>
+                <p class="editorial-lead__copy">
+                  A two-phase duel inside the sealed sanctum. Seraph Vael cycles between telegraphed horizontal blade lunges, vertical sky-dives that erupt into ground shockwaves, and aerial orb fan barrages. Dropping Vael to 12 HP triggers <strong>Eclipse Ascension</strong>—accelerating all attack patterns by 1.28× and expanding the orb fan to five simultaneous projectiles.
+                </p>
+                <div class="biome-index" aria-label="Biome stage breakdown">
+                  <div class="biome-index__item">
+                    <span>PRECIPICE</span>
+                    <strong>CH. I – III</strong>
+                  </div>
+                  <div class="biome-index__item">
+                    <span>CRIMSON SPIRE</span>
+                    <strong>CH. IV – VII</strong>
+                  </div>
+                  <div class="biome-index__item">
+                    <span>LABYRINTH</span>
+                    <strong>CH. VIII – XI</strong>
+                  </div>
+                  <div class="biome-index__item">
+                    <span>SANCTUM</span>
+                    <strong>CH. XII</strong>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- Smaller Image-and-Text Entries Beside Lead Plate -->
+            <div class="editorial-side-list">
+              <article class="editorial-entry">
+                <div class="editorial-entry__thumb">
+                  <img
+                    id="plate-sub-bastion"
+                    class="editorial-plate__img"
+                    width="480"
+                    height="300"
+                    alt="Grayscale capture of Chapter V Crimson Bastion showing multi-tiered platforms and shielded Crimson Vanguards"
+                    src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 300' width='480' height='300'%3E%3Crect width='480' height='300' fill='%230d110f'/%3E%3Crect x='0' y='220' width='480' height='80' fill='%23252f2a'/%3E%3Crect x='90' y='150' width='130' height='20' fill='%233d4d44'/%3E%3Crect x='280' y='110' width='140' height='20' fill='%233d4d44'/%3E%3Crect x='140' y='122' width='24' height='28' fill='%23e2e8f0'/%3E%3C/svg%3E"
+                  />
+                </div>
+                <div>
+                  <div class="editorial-entry__meta">CH. V · 80×36 CITADEL // 4 HP</div>
+                  <h3 class="editorial-entry__title">CRIMSON VANGUARDS</h3>
+                  <p class="editorial-entry__copy">
+                    Armored sentinels carrying heavy tower shields. Standard frontal 1-damage slashes are deflected into an immediate <strong>Guard Counter</strong> lance thrust—strike from above via pogo, dash behind them, or break through with a 2× Finisher.
+                  </p>
+                </div>
+              </article>
+
+              <article class="editorial-entry">
+                <div class="editorial-entry__thumb">
+                  <img
+                    id="plate-sub-cloister"
+                    class="editorial-plate__img"
+                    width="480"
+                    height="300"
+                    alt="Grayscale capture of Chapter VII Mantis Cloister featuring spike chasms and agile Mantis Duelists"
+                    src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 300' width='480' height='300'%3E%3Crect width='480' height='300' fill='%230b0e0d'/%3E%3Crect x='0' y='210' width='160' height='90' fill='%2328332d'/%3E%3Crect x='230' y='210' width='250' height='90' fill='%2328332d'/%3E%3Crect x='150' y='130' width='120' height='18' fill='%2343544b'/%3E%3Crect x='200' y='98' width='22' height='32' fill='%23f8fffa'/%3E%3C/svg%3E"
+                  />
+                </div>
+                <div>
+                  <div class="editorial-entry__meta">CH. VII · CLOISTER // 4 HP</div>
+                  <h3 class="editorial-entry__title">MANTIS DUELISTS</h3>
+                  <p class="editorial-entry__copy">
+                    Aggressive scythe masters with a 96px detection range. Upon taking damage or closing distance, they crouch into a 15-frame windup before lunging across platforms at 3.45 px/frame.
+                  </p>
+                </div>
+              </article>
+
+              <article class="editorial-entry">
+                <div class="editorial-entry__thumb">
+                  <img
+                    id="plate-sub-observatory"
+                    class="editorial-plate__img"
+                    width="480"
+                    height="300"
+                    alt="Grayscale capture of Chapter IX Astral Observatory with Void Scholars and aerial constructs"
+                    src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 300' width='480' height='300'%3E%3Crect width='480' height='300' fill='%23090c0b'/%3E%3Crect x='0' y='224' width='480' height='76' fill='%23222b26'/%3E%3Crect x='70' y='136' width='120' height='18' fill='%233c4c43'/%3E%3Crect x='270' y='136' width='120' height='18' fill='%233c4c43'/%3E%3Ccircle cx='240' cy='96' r='10' fill='%23f8fffa'/%3E%3C/svg%3E"
+                  />
+                </div>
+                <div>
+                  <div class="editorial-entry__meta">CH. VIII–XI · LABYRINTH // 3 HP</div>
+                  <h3 class="editorial-entry__title">VOID MAGES &amp; CONSTRUCTS</h3>
+                  <p class="editorial-entry__copy">
+                    Void Mages fire twin offset projectiles and teleport 40px away when crowded. Pair their parried orbs with aerial pogo chains across the 120×60 Grand Labyrinth to claim all three Sanctum Keys.
+                  </p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- [04] HORIZONTAL COMPARISON RECORDS (Input Profiles & Campaign Acts) -->
+      <section id="loadout-records" class="rail-section" aria-labelledby="heading-records">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">04</span>
+        </div>
+
+        <div class="split-section">
+          <div class="section-intro">
+            <span class="section-kicker">COMPARISON RECORDS // INPUT &amp; ACTS</span>
+            <h2 id="heading-records" class="section-heading">CONTROL SCHEMES &amp; REALM ACTS</h2>
+            <p class="section-copy">
+              Select an input profile below to update the live keycap reference bar beneath the game viewport, or inspect the four campaign acts and inject any chapter directly into the runtime.
+            </p>
+            <p class="section-note">
+              All three input layouts are polled simultaneously on every 60 Hz frame—no menu switching required.
+            </p>
+          </div>
+
+          <div class="comparison-stack">
+            <!-- Group A: Input Scheme Comparison Records -->
+            <div class="comparison-group" role="radiogroup" aria-label="Control scheme comparison">
+              <div class="comparison-group__header">
+                <span>RECORD SET A // INPUT BINDING PROFILES</span>
+                <span class="comparison-group__hint">SELECT ROW TO SYNC VIEWPORT KEYCAPS</span>
+              </div>
+
+              <div
+                class="comparison-record is-selected"
+                role="radio"
+                aria-checked="true"
+                tabindex="0"
+                data-scheme-record="classic"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">CLASSIC ARCADE</div>
+                    <div class="comparison-record__sub">DEFAULT CONSOLE KEYBOARD</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">PRIMARY CLUSTER</span>
+                  <span class="comparison-record__term-val">ARROWS + Z / X / C / V</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Right-hand directional control with left-hand thumb/index access for Jump (<kbd>Z</kbd>), 3-Hit Slash (<kbd>X</kbd>), Astral Dash (<kbd>C</kbd>), and Soul Wave / Focus (<kbd>V</kbd>).</span>
+                  <span class="top-bar__meta">ACTIVE PROFILE</span>
+                </div>
+              </div>
+
+              <div
+                class="comparison-record"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                data-scheme-record="wasd"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">MODERN WASD</div>
+                    <div class="comparison-record__sub">TWO-HANDED HOME ROW</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">PRIMARY CLUSTER</span>
+                  <span class="comparison-record__term-val">WASD + K / J / L / I</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Left-hand <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> directional aim paired with <kbd>Space</kbd>/<kbd>K</kbd> Jump, <kbd>J</kbd> Slash, <kbd>L</kbd>/<kbd>Shift</kbd> Dash, and <kbd>I</kbd>/<kbd>U</kbd> Soul Wave &amp; Focus.</span>
+                  <span class="top-bar__meta">HOME-ROW SPLIT</span>
+                </div>
+              </div>
+
+              <div
+                class="comparison-record"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                data-scheme-record="gamepad"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">GAMEPAD DIRECT</div>
+                    <div class="comparison-record__sub">HTML5 GAMEPAD API</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">PRIMARY CLUSTER</span>
+                  <span class="comparison-record__term-val">D-PAD / STICK + FACE BTNS</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Zero-deadzone D-Pad or 0.4-threshold analog stick with South (<kbd>A</kbd>/<kbd>Cross</kbd>) Jump, West (<kbd>X</kbd>/<kbd>Square</kbd>) Slash, East (<kbd>B</kbd>/<kbd>Circle</kbd>) Dash, and North (<kbd>Y</kbd>/<kbd>Triangle</kbd>) Soul Skill.</span>
+                  <span class="top-bar__meta">AUTO-DETECT</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Group B: Campaign Act & Shrine Warp Comparison Records -->
+            <div class="comparison-group" role="radiogroup" aria-label="Campaign acts comparison">
+              <div class="comparison-group__header">
+                <span>RECORD SET B // CAMPAIGN ACT &amp; SHRINE TOPOLOGY</span>
+                <span class="comparison-group__hint">12 HANDCRAFTED STAGES</span>
+              </div>
+
+              <div
+                class="comparison-record is-selected"
+                role="radio"
+                aria-checked="true"
+                tabindex="0"
+                data-act-record="act1"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">ACT I · SILENT PRECIPICE</div>
+                    <div class="comparison-record__sub">CHAPTERS I – III // AWAKENING</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">SHRINE &amp; RELICS</span>
+                  <span class="comparison-record__term-val">SHRINE I · 1 RELIC</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Awaken at the Silent Precipice Altar, claim the Astral Blade in Chapter II, and learn pogo recoil and Soul Focus against Void Stalkers in First Blood.</span>
+                  <button type="button" class="status-btn" data-load-stage="0">LOAD CH. I ↑</button>
+                </div>
+              </div>
+
+              <div
+                class="comparison-record"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                data-act-record="act2"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">ACT II · THE IRON CITADEL</div>
+                    <div class="comparison-record__sub">CHAPTERS IV – VII // SPIRE ASCENT</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">SHRINE &amp; RELICS</span>
+                  <span class="comparison-record__term-val">SHRINE V · 2 RELICS</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Cross Windward Chasm, breach the 80×36 Crimson Bastion keep to attune Shrine V, climb Shattered Arches, and survive Mantis Cloister.</span>
+                  <button type="button" class="status-btn" data-load-stage="4">LOAD CH. V ↑</button>
+                </div>
+              </div>
+
+              <div
+                class="comparison-record"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                data-act-record="act3"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">ACT III · GRAND LABYRINTH</div>
+                    <div class="comparison-record__sub">CHAPTERS VIII – XI // THREE SEALS</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">SHRINE &amp; RELICS</span>
+                  <span class="comparison-record__term-val">SHRINE XI · 2 RELICS · 3 KEYS</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Navigate Twin Conduits, Astral Observatory, and Sanctum Threshold before entering the 120×60 Grand Labyrinth to claim 3 Sanctum Keys.</span>
+                  <button type="button" class="status-btn" data-load-stage="10">LOAD CH. XI ↑</button>
+                </div>
+              </div>
+
+              <div
+                class="comparison-record"
+                role="radio"
+                aria-checked="false"
+                tabindex="0"
+                data-act-record="act4"
+              >
+                <div class="comparison-record__identity">
+                  <span class="control-indicator" aria-hidden="true"></span>
+                  <div>
+                    <div class="comparison-record__name">ACT IV · ECLIPSE SANCTUM</div>
+                    <div class="comparison-record__sub">CHAPTER XII // FINAL RECKONING</div>
+                  </div>
+                </div>
+                <div class="comparison-record__terms">
+                  <span class="comparison-record__term-label">BOSS ENCOUNTER</span>
+                  <span class="comparison-record__term-val">SERAPH VAEL (24 HP)</span>
+                </div>
+                <div class="comparison-record__features">
+                  <span>Face the Fallen Warden across two escalating phases. Defeating Vael records your final speedrun time, death count, and S/A/B combat rank.</span>
+                  <button type="button" class="status-btn" data-load-stage="11">LOAD CH. XII ↑</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- [05] TECHNICAL SPECIFICATIONS & ENGINE DISCLOSURES -->
+      <section id="engine-specs" class="rail-section" aria-labelledby="heading-specs">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">05</span>
+        </div>
+
+        <div class="split-section">
+          <div class="section-intro">
+            <span class="section-kicker">SYSTEM ARCHITECTURE // NOTES</span>
+            <h2 id="heading-specs" class="section-heading">ENGINE DISCLOSURES</h2>
+            <p class="section-copy">
+              Every subsystem in Celestial Blade—from sub-pixel AABB collision and verlet scarf physics to the 4-track procedural audio synthesizer—is written in plain JavaScript without external runtime libraries.
+            </p>
+          </div>
+
+          <div class="disclosure-list">
+            <details class="disclosure-item" open>
+              <summary class="disclosure-summary">
+                <span class="disclosure-summary__left">
+                  <span class="disclosure-summary__idx">01 //</span>
+                  <span>DETERMINISTIC 60 FPS TIMESTEP &amp; SUB-PIXEL PHYSICS</span>
+                </span>
+                <span class="disclosure-marker" aria-hidden="true"></span>
+              </summary>
+              <div class="disclosure-body">
+                <code>Game.js</code> runs an accumulator loop locked to <code>VIEWPORT.STEP_MS</code> (<code>16.6667ms</code>) so jump arcs, 8-frame slash windows, and hitstop pauses behave identically on 60 Hz, 120 Hz, and 144 Hz displays. <code>PhysicsBody.js</code> tracks fractional sub-pixel remainders (<code>remX</code>, <code>remY</code>) with 3-pixel upward corner correction so the knight never snags on ceiling ledges during high-speed aerial pogo chains.
+              </div>
+            </details>
+
+            <details class="disclosure-item">
+              <summary class="disclosure-summary">
+                <span class="disclosure-summary__left">
+                  <span class="disclosure-summary__idx">02 //</span>
+                  <span>PROCEDURAL WEB AUDIO SYNTHESIS (ZERO AUDIO FILES)</span>
+                </span>
+                <span class="disclosure-marker" aria-hidden="true"></span>
+              </summary>
+              <div class="disclosure-body">
+                <code>SoundEngine.js</code> synthesizes all four biome musical scores (<em>Exploration</em>, <em>Bastion</em>, <em>Labyrinth</em>, and <em>Boss</em>) plus 18 distinct combat sound effects in real time using native Web Audio API triangle, square, sawtooth, and filtered noise nodes. When the player takes fatal damage, music ducks automatically while the crystal heart cracks and shatters.
+              </div>
+            </details>
+
+            <details class="disclosure-item">
+              <summary class="disclosure-summary">
+                <span class="disclosure-summary__left">
+                  <span class="disclosure-summary__idx">03 //</span>
+                  <span>CUSTOM PIXEL BITMAP FONT &amp; VERLET SCARF RENDERING</span>
+                </span>
+                <span class="disclosure-marker" aria-hidden="true"></span>
+              </summary>
+              <div class="disclosure-body">
+                To guarantee crisp 1:1 pixel typography at <code>320×180</code> without browser font anti-aliasing blur, <code>PixelFont.js</code> encodes a complete 5×5 bitmap glyph set drawn directly to the canvas context. The knight’s crimson scarf is simulated via a 5-node trailing chain that reacts dynamically to facing direction, dash velocity, and wind oscillation.
+              </div>
+            </details>
+
+            <details class="disclosure-item">
+              <summary class="disclosure-summary">
+                <span class="disclosure-summary__left">
+                  <span class="disclosure-summary__idx">04 //</span>
+                  <span>LOCAL EXECUTION, BUNDLER &amp; ZERO-SERVER FILE MODE</span>
+                </span>
+                <span class="disclosure-marker" aria-hidden="true"></span>
+              </summary>
+              <div class="disclosure-body">
+                During development, <code>index.html</code> loads native ES modules from <code>./src/main.js</code> (run <code>npm run dev</code> for <code>http://localhost:8080</code>). For standalone offline play, <code>node scripts/build.js</code> concatenates all 19 modules in dependency order into <code>./dist/bundle.js</code>, allowing <code>index.html</code> to run directly over the <code>file://</code> protocol when double-clicked.
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- [06] CLOSING GREEN STATEMENT & COMPACT DIRECTORY FOOTER -->
+      <section class="rail-section closing-section" aria-labelledby="closing-title">
+        <div class="rail-marker" aria-hidden="true">
+          <span class="rail-marker__node"></span>
+          <span class="rail-marker__code">06</span>
+        </div>
+
+        <div class="closing-banner">
+          <div>
+            <h2 id="closing-title" class="closing-statement">
+              CLAIM THE ASTRAL BLADE.<br />SHATTER THE ECLIPSE.
+            </h2>
+            <p class="closing-sub">
+              Twelve stages. Five hidden Starlight Relics. Three Sanctum Seals. Step onto the Silent Precipice and test your blade against Seraph Vael right in your browser.
+            </p>
+          </div>
+
+          <div class="action-cluster">
+            <button type="button" class="btn-primary" data-focus-game data-target-stage="0">
+              START NEW RUN [CH. I] ↑
+            </button>
+            <a
+              href="https://platformer-chi-one.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="btn-secondary"
+            >
+              FULLSCREEN MIRROR ↗
+            </a>
+          </div>
+        </div>
+
+        <footer class="directory-footer" aria-label="Site directory and credits">
+          <div class="directory-grid">
+            <div>
+              <h3 class="directory-col__title">01 // NAVIGATION</h3>
+              <ul class="directory-list">
+                <li><a href="#play-viewport">Interactive Canvas Viewport</a></li>
+                <li><a href="#combat-matrix">Combat &amp; Soul Matrix</a></li>
+                <li><a href="#realm-atlas">Realm Atlas &amp; Bestiary</a></li>
+                <li><a href="#loadout-records">Control &amp; Act Records</a></li>
+                <li><a href="#engine-specs">Engine Disclosures</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="directory-col__title">02 // STAGE INDEX (I–XII)</h3>
+              <ul class="directory-list">
+                <li><a href="#play-viewport" data-focus-game data-target-stage="0">CH. I — Silent Precipice (Shrine)</a></li>
+                <li><a href="#play-viewport" data-focus-game data-target-stage="1">CH. II — Celestial Shrine (Blade)</a></li>
+                <li><a href="#play-viewport" data-focus-game data-target-stage="4">CH. V — Crimson Bastion (Shrine)</a></li>
+                <li><a href="#play-viewport" data-focus-game data-target-stage="6">CH. VII — Mantis Cloister</a></li>
+                <li><a href="#play-viewport" data-focus-game data-target-stage="10">CH. XI — Grand Labyrinth (Shrine)</a></li>
+                <li><a href="#play-viewport" data-focus-game data-target-stage="11">CH. XII — Eclipse Sanctum (Boss)</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="directory-col__title">03 // RUNTIME SPECS</h3>
+              <ul class="directory-list">
+                <li>Viewport: 320×180 px (8px Tile Grid)</li>
+                <li>Timestep: 60.0 FPS Deterministic</li>
+                <li>Audio: Web Audio API Procedural Synth</li>
+                <li>Persistence: LocalStorage Save v2</li>
+                <li>Bundle: <code>dist/bundle.js</code> (Zero Deps)</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 class="directory-col__title">04 // REPOSITORY &amp; AUTHOR</h3>
+              <ul class="directory-list">
+                <li>
+                  <a
+                    href="https://github.com/yellowphantom364/Celestial-Blade"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >GitHub: yellowphantom364/Celestial-Blade ↗</a>
+                </li>
+                <li>
+                  <a
+                    href="https://platformer-chi-one.vercel.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >Live Deployment: platformer-chi-one.vercel.app ↗</a>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/yellowphantom364"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >Author: George Lin (@yellowphantom364) ↗</a>
+                </li>
+                <li>License: MIT (Attribution Required)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="directory-bottom">
+            <span>CELESTIAL BLADE: ECHOES OF THE ECLIPSE // CREATED BY GEORGE LIN</span>
+            <span>DESIGN SYSTEM: CYBERPUNK SIGNAL RAIL // IBM PLEX SANS &amp; IBM PLEX MONO</span>
+          </div>
+        </footer>
+      </section>
+
+    </div>
   </main>
 
   <script>

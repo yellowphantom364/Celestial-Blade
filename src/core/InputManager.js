@@ -34,6 +34,32 @@ export class InputManager {
     this.prevPadButtons = Object.create(null);
 
     window.addEventListener("keydown", (e) => {
+      const active = document.activeElement;
+      const isPageControl =
+        active &&
+        active.id !== "game" &&
+        (active.tagName === "BUTTON" ||
+          active.tagName === "A" ||
+          active.tagName === "SUMMARY" ||
+          active.tagName === "INPUT" ||
+          active.tagName === "SELECT" ||
+          active.tagName === "TEXTAREA" ||
+          active.isContentEditable);
+
+      if (isPageControl) {
+        return;
+      }
+
+      const canvas = document.getElementById("game");
+      const canvasFocused =
+        !canvas ||
+        document.activeElement === canvas ||
+        !!document.fullscreenElement;
+
+      if (!canvasFocused) {
+        return;
+      }
+
       if (this.soundEngine) {
         this.soundEngine.unlock();
       }
